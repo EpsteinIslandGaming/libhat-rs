@@ -140,7 +140,7 @@ up the vectorized scanning algorithms.
 |----------------------------|:-----:|:-------:|:-----:|
 | `get_process_module`       |   ✅  |    ✅    |      |
 | `get_module`               |   ✅  |    ✅    |      |
-| `module::get_section_data` |       |    ✅    |      |
+| `module::get_section_data` |   ✅  |    ✅    |      |
 | Scanning (SSE/AVX2)        |   ✅  |    ✅    |   ✅ |
 
 ## Versioning

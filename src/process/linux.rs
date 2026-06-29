@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::slice;
@@ -115,8 +115,110 @@ unsafe extern "C" fn max_size_cb(
     0
 }
 
-pub fn get_section_data<'a>(_module: &'a Module, _name: &str) -> Option<&'a [u8]> {
+pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> {
+    let addr = module.address();
+    let file_path = get_module_path(addr)?;
+
+    let elf_data = std::fs::read(&file_path).ok()?;
+    if elf_data.len() < 64 || &elf_data[..4] != b"\x7fELF" || elf_data[4] != 2 {
+        return None;
+    }
+
+    let e_shoff = read_u64_ne(&elf_data, 40)? as usize;
+    let e_shentsize = read_u16_ne(&elf_data, 58)? as usize;
+    let e_shnum = read_u16_ne(&elf_data, 60)? as usize;
+    let e_shstrndx = read_u16_ne(&elf_data, 62)? as usize;
+
+    if e_shoff == 0 || e_shnum == 0 || e_shentsize < 64 || e_shstrndx >= e_shnum {
+        return None;
+    }
+
+    let strtab_hdr = e_shoff + e_shstrndx * e_shentsize;
+    let strtab_off = read_u64_ne(&elf_data, strtab_hdr + 24)? as usize;
+    let strtab_size = read_u64_ne(&elf_data, strtab_hdr + 32)? as usize;
+
+    if strtab_off + strtab_size > elf_data.len() {
+        return None;
+    }
+
+    for i in 0..e_shnum {
+        let shdr_off = e_shoff + i * e_shentsize;
+        if shdr_off + 64 > elf_data.len() {
+            continue;
+        }
+
+        let sh_name = read_u32_ne(&elf_data, shdr_off)? as usize;
+        let sh_addr = read_u64_ne(&elf_data, shdr_off + 16)? as usize;
+        let sh_size = read_u64_ne(&elf_data, shdr_off + 32)? as usize;
+
+        if sh_addr == 0 || sh_size == 0 || sh_name >= strtab_size {
+            continue;
+        }
+
+        let name_start = strtab_off + sh_name;
+        let end = elf_data[name_start..strtab_off + strtab_size]
+            .iter()
+            .position(|&b| b == 0)?;
+        let sec_name = std::str::from_utf8(&elf_data[name_start..name_start + end]).ok()?;
+
+        if sec_name == name {
+            return unsafe {
+                Some(slice::from_raw_parts((addr + sh_addr) as *const u8, sh_size))
+            };
+        }
+    }
+
     None
+}
+
+fn get_module_path(addr: usize) -> Option<String> {
+    unsafe {
+        let mut path: Option<String> = None;
+        let mut data = ModulePathData { addr, path: &mut path };
+        dl_iterate_phdr(Some(module_path_cb), &mut data as *mut _ as *mut c_void);
+        path
+    }
+}
+
+struct ModulePathData<'a> {
+    addr: usize,
+    path: &'a mut Option<String>,
+}
+
+unsafe extern "C" fn module_path_cb(
+    info: *mut dl_phdr_info,
+    _size: size_t,
+    data: *mut c_void,
+) -> i32 {
+    let cb = &mut *(data as *mut ModulePathData);
+    if (*info).dlpi_addr as usize != cb.addr {
+        return 0;
+    }
+    let c_str = CStr::from_ptr((*info).dlpi_name);
+    let name = match c_str.to_str() {
+        Ok(n) => n,
+        Err(_) => return 1,
+    };
+    if name.is_empty() {
+        *cb.path = std::fs::read_link("/proc/self/exe")
+            .ok()
+            .and_then(|p| p.to_str().map(|s| s.to_string()));
+    } else {
+        *cb.path = Some(name.to_string());
+    }
+    1
+}
+
+fn read_u16_ne(data: &[u8], offset: usize) -> Option<u16> {
+    Some(u16::from_ne_bytes(data.get(offset..offset + 2)?.try_into().ok()?))
+}
+
+fn read_u32_ne(data: &[u8], offset: usize) -> Option<u32> {
+    Some(u32::from_ne_bytes(data.get(offset..offset + 4)?.try_into().ok()?))
+}
+
+fn read_u64_ne(data: &[u8], offset: usize) -> Option<u64> {
+    Some(u64::from_ne_bytes(data.get(offset..offset + 8)?.try_into().ok()?))
 }
 
 pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protection) -> bool) {
