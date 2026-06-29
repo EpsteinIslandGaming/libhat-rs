@@ -84,7 +84,7 @@ auto result = hat::find_pattern(data, hat::parse_signature("48 8D 05 ? ? ? ?").v
 ### C# bindings (`bindings/cs/`)
 
 ```csharp
-using LibhatSharp;
+using Hat;
 
 var result = Native.FindPattern("48 8D 05 ? ? ? ?", buffer, alignment);
 ```
@@ -97,8 +97,6 @@ import me.zero.libhat.*;
 var sig = Libhat.parseSignature("48 8D 05 ? ? ? ?");
 var result = Libhat.findPattern(sig, buffer, alignment);
 ```
-
-## Signature syntax
 
 ## Pattern/Signature syntax
 
@@ -130,12 +128,12 @@ up the vectorized scanning algorithms.
 ## Platform support
 
 
-| API                        | Linux | Windows | macOS  |
-|----------------------------|-------|---------|--------|
-| `get_process_module`       | ✅    | ✅       |       |
-| `get_module`               | ✅    | ✅       |       |
-| `module::get_section_data` |       | ✅       |       |
-| Scanning (SSE/AVX2)        | ✅    | ✅       | ✅    |
+| API                        | Linux | Windows | macOS |
+|----------------------------|:-----:|:-------:|:-----:|
+| `get_process_module`       |   ✅  |    ✅    |      |
+| `get_module`               |   ✅  |    ✅    |      |
+| `module::get_section_data` |       |    ✅    |      |
+| Scanning (SSE/AVX2)        |   ✅  |    ✅    |   ✅ |
 
 ## Versioning
 
