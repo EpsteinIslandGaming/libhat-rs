@@ -42,6 +42,8 @@ pub(crate) enum ScanMode {
     Avx2,
     #[cfg(target_arch = "x86_64")]
     Avx512,
+    #[cfg(target_arch = "aarch64")]
+    Neon,
 }
 
 pub(crate) struct ScanContext<'a> {
@@ -128,6 +130,12 @@ fn resolve_scan_mode() -> ScanMode {
             return ScanMode::Sse;
         }
     }
+    #[cfg(target_arch = "aarch64")]
+    {
+        if is_aarch64_feature_detected!("neon") {
+            return ScanMode::Neon;
+        }
+    }
     ScanMode::Single
 }
 
@@ -181,6 +189,8 @@ impl<'a> ScanContext<'a> {
             ScanMode::Avx2 => crate::arch::avx2::scan_avx2(begin, end, self),
             #[cfg(target_arch = "x86_64")]
             ScanMode::Avx512 => crate::arch::avx512::scan_avx512(begin, end, self),
+            #[cfg(target_arch = "aarch64")]
+            ScanMode::Neon => crate::arch::neon::scan_neon(begin, end, self),
         }
     }
 }
@@ -485,6 +495,32 @@ fn scan_at_offset(
     fn test_mode_avx2_exhaustive() {
         if is_x86_feature_detected!("avx2") {
             test_mode_exhaustive("AVX2", scan_avx2_mode);
+        }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn scan_neon_mode(
+        begin: *const u8,
+        end: *const u8,
+        sig: &[SignatureElement],
+        alignment: ScanAlignment,
+    ) -> ConstScanResult {
+        let ctx = ScanContext {
+            signature: sig,
+            alignment,
+            hints: ScanHint::NONE,
+            cmp_index: find_first_all_index(sig),
+            pair_index: None,
+            mode: ScanMode::Neon,
+        };
+        unsafe { crate::arch::neon::scan_neon(begin, end, &ctx) }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    #[test]
+    fn test_mode_neon_exhaustive() {
+        if is_aarch64_feature_detected!("neon") {
+            test_mode_exhaustive("NEON", scan_neon_mode);
         }
     }
 
