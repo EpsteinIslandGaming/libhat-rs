@@ -1,5 +1,4 @@
 use crate::protection::Protection;
-use crate::system;
 
 pub struct MemoryProtector {
     address: usize,
@@ -9,7 +8,8 @@ pub struct MemoryProtector {
 }
 
 impl MemoryProtector {
-    pub fn new(address: usize, size: usize, flags: Protection) -> Self {
+    pub fn new(address: usize, size: usize, _flags: Protection) -> Self {
+        #[allow(unused_mut)]
         let mut prot = MemoryProtector {
             address,
             size,
@@ -19,12 +19,12 @@ impl MemoryProtector {
 
         #[cfg(target_os = "linux")]
         {
-            prot.init_linux(flags);
+            prot.init_linux(_flags);
         }
 
         #[cfg(windows)]
         {
-            prot.init_windows(flags);
+            prot.init_windows(_flags);
         }
 
         prot
@@ -32,6 +32,7 @@ impl MemoryProtector {
 
     #[cfg(target_os = "linux")]
     fn init_linux(&mut self, flags: Protection) {
+        use crate::system;
         use std::fs::File;
         use std::io::{BufRead, BufReader};
 
@@ -89,7 +90,7 @@ impl MemoryProtector {
 
     #[cfg(windows)]
     fn init_windows(&mut self, flags: Protection) {
-        use windows_sys::Win32::System::Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS};
+        use windows_sys::Win32::System::Memory::VirtualProtect;
         use windows_sys::Win32::System::Memory::{
             PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
         };
@@ -137,7 +138,7 @@ impl MemoryProtector {
 
         #[cfg(target_os = "linux")]
         {
-            let page_size = system::get_system().page_size;
+            let page_size = crate::system::get_system().page_size;
             let page_start = self.address & !(page_size - 1);
             let mapped_size = (self.address + self.size - page_start + page_size - 1) & !(page_size - 1);
             unsafe {

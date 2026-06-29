@@ -9,7 +9,7 @@ pub fn get_module(_name: &str) -> Option<Module> {
     None
 }
 
-pub fn get_module_data<'a>(_module: &'a Module) -> &'a [u8] {
+pub fn get_module_data(_module: &Module) -> &[u8] {
     &[]
 }
 

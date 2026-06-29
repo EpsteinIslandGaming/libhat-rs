@@ -69,23 +69,23 @@ pub fn module_at(address: *const u8, size: Option<usize>) -> Option<Module> {
     platform::module_at(address, size)
 }
 
-pub fn is_readable(region: &[u8]) -> bool {
+pub fn is_readable(_region: &[u8]) -> bool {
     #[cfg(unix)]
-    { platform::region_has_flags(region, libc::PROT_READ as u32) }
+    { platform::region_has_flags(_region, libc::PROT_READ as u32) }
     #[cfg(not(unix))]
     { false }
 }
 
-pub fn is_writable(region: &[u8]) -> bool {
+pub fn is_writable(_region: &[u8]) -> bool {
     #[cfg(unix)]
-    { platform::region_has_flags(region, libc::PROT_WRITE as u32) }
+    { platform::region_has_flags(_region, libc::PROT_WRITE as u32) }
     #[cfg(not(unix))]
     { false }
 }
 
-pub fn is_executable(region: &[u8]) -> bool {
+pub fn is_executable(_region: &[u8]) -> bool {
     #[cfg(unix)]
-    { platform::region_has_flags(region, libc::PROT_EXEC as u32) }
+    { platform::region_has_flags(_region, libc::PROT_EXEC as u32) }
     #[cfg(not(unix))]
     { false }
 }

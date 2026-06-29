@@ -30,7 +30,7 @@ pub fn get_module(name: &str) -> Option<Module> {
             let handle = GetModuleHandleW(std::ptr::null());
             if handle == 0 { return None; }
             let mut info = std::mem::zeroed::<MODULEINFO>();
-            if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info)) == 0 {
+            if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info) as u32) == 0 {
                 return None;
             }
             Some(Module::new(info.lpBaseOfDll as usize))
@@ -42,7 +42,7 @@ pub fn get_module(name: &str) -> Option<Module> {
             let handle = GetModuleHandleW(wide.as_ptr());
             if handle == 0 { return None; }
             let mut info = std::mem::zeroed::<MODULEINFO>();
-            if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info)) == 0 {
+            if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info) as u32) == 0 {
                 return None;
             }
             Some(Module::new(info.lpBaseOfDll as usize))
