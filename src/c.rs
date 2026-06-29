@@ -100,8 +100,8 @@ pub unsafe extern "C" fn libhat_create_signature(
         return LibhatStatus::ErrUnknown;
     }
 
-    let bytes_slice = std::slice::from_raw_parts(bytes as *const u8, size);
-    let mask_slice = std::slice::from_raw_parts(mask as *const u8, size);
+    let bytes_slice = std::slice::from_raw_parts(bytes.cast::<u8>(), size);
+    let mask_slice = std::slice::from_raw_parts(mask.cast::<u8>(), size);
 
     let mut sig = Vec::with_capacity(size);
     for i in 0..size {

@@ -14,8 +14,8 @@ pub(crate) mod avx512_impl {
             mask[i] = e.mask();
         }
         (
-            _mm512_loadu_si512(bytes.as_ptr() as *const i32),
-            _mm512_loadu_si512(mask.as_ptr() as *const i32),
+            _mm512_loadu_si512(bytes.as_ptr() as *const __m512i),
+            _mm512_loadu_si512(mask.as_ptr() as *const __m512i),
         )
     }
 
@@ -99,7 +99,7 @@ pub(crate) mod avx512_impl {
                 let i = (it as *const u8).add(offset).sub(cmp_index);
 
                 let matched = if veccmp {
-                    let data = _mm512_loadu_si512(i as *const i32);
+                    let data = _mm512_loadu_si512(i as *const __m512i);
                     let neq = _mm512_xor_si512(data, sig_bytes);
                     _mm512_test_epi64_mask(neq, sig_mask) == 0
                 } else {
