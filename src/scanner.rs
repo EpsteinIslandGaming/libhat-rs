@@ -1,5 +1,7 @@
 use crate::signature::{SignatureElement, SignatureView};
 use crate::result::ConstScanResult;
+#[cfg(target_arch = "aarch64")]
+use std::arch::is_aarch64_feature_detected;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScanAlignment {
