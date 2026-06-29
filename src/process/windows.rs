@@ -58,7 +58,7 @@ unsafe fn get_nt_headers(base: usize) -> Option<*mut IMAGE_NT_HEADERS64> {
     Some(nt)
 }
 
-pub fn get_module_data<'a>(module: &'a Module) -> &'a [u8] {
+pub fn get_module_data(module: &Module) -> &[u8] {
     unsafe {
         let base = module.address() as *const u8;
         let nt = match get_nt_headers(module.address()) {
@@ -80,7 +80,7 @@ pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> 
 
         for i in 0..num_sections {
             let section = sections.add(i as usize);
-            let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr() as *const u8, 8);
+            let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr(), 8);
             let sec_name_trimmed = std::str::from_utf8(sec_name)
                 .unwrap_or("")
                 .trim_end_matches('\0');
