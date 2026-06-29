@@ -10,54 +10,54 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-#  build-and-test:
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        os: [ubuntu-latest, windows-latest, macos-latest]
-#    runs-on: ${{ matrix.os }}
-#    steps:
-#      - uses: actions/checkout@v7
-#
-#      - name: Install Rust toolchain
-#        uses: dtolnay/rust-toolchain@stable
-#        with:
-#          components: clippy
-#
-#      - name: Restore cargo cache
-#        uses: Swatinem/rust-cache@v2
-#
-#      - name: Build
-#        run: cargo build --verbose
-#
-#      - name: Build (release)
-#        run: cargo build --release --verbose
-#
-#      - name: Run tests
-#        run: cargo test --verbose
-#
-#      - name: Clippy
-#        run: cargo clippy --all-targets -- -D warnings
-#
-#  build-avx512:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v7
-#      - name: Install Rust toolchain
-#        uses: dtolnay/rust-toolchain@stable
-#      - name: Restore cargo cache
-#        uses: Swatinem/rust-cache@v2
-#      - name: Build with avx512 feature
-#        run: cargo build --features avx512 --verbose
-#      - name: Test with avx512 feature
-#        run: cargo test --features avx512 --verbose
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Restore cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Build (release)
+        run: cargo build --release --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  build-avx512:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Restore cargo cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build with avx512 feature
+        run: cargo build --features avx512 --verbose
+      - name: Test with avx512 feature
+        run: cargo test --features avx512 --verbose
 
   build-and-test-arm:
     strategy:
       fail-fast: false
       matrix:
         os: [
-          #ubuntu-26.04-arm,
+          ubuntu-26.04-arm,
           windows-11-vs2026-arm
         ]
     runs-on: ${{ matrix.os }}
