@@ -36,7 +36,7 @@ avx512 = []
 members = ["libhat-macros"]
 
 [dev-dependencies]
-criterion = { version = "0.8.2", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "scanner"
