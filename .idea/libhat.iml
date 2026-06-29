@@ -7,6 +7,9 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/bindings/zig/.zig-cache" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/zig/.zig-cache" />
+      <excludeFolder url="file://$MODULE_DIR$/examples/zig/zig-out" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

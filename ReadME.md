@@ -1,7 +1,7 @@
 # libhat-rs
 
 A Rust rewrite of [libhat](https://github.com/BasedInc/libhat), a high-performance byte-pattern scanning library for game hacking,
-Rewritten from C++20 to Rust with matching C, C++, C#, Java, and Python bindings.
+Rewritten from C++20 to Rust with matching C, C++, C#, Java, Python, and Zig bindings.
 
 ## Why?
 

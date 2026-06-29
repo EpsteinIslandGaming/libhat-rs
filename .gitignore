@@ -1,2 +1,6 @@
 /target/
 /Cargo.lock
+/.zig-cache
+/bindings/zig/.zig-cache
+/examples/zig/.zig-cache
+/examples/zig/zig-out

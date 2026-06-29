@@ -11,12 +11,10 @@ path = "src/lib.rs"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-libc = "0.2"
-cfg-if = "1.0"
 libhat-macros = { version = "0.10.0", path = "libhat-macros" }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = [
+windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_System_Diagnostics_Debug",
     "Win32_System_LibraryLoader",
@@ -27,6 +25,9 @@ windows-sys = { version = "0.52", features = [
     "Win32_System_Threading",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "1.0.0-alpha"
+
 [features]
 default = []
 avx512 = []
@@ -35,8 +36,7 @@ avx512 = []
 members = ["libhat-macros"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
-libc = "0.2"
+criterion = { version = "0.8.2", features = ["html_reports"] }
 
 [[bench]]
 name = "scanner"
