@@ -1,4 +1,4 @@
-# libhat
+# libhat-rs
 
 A Rust rewrite of [libhat](https://github.com/BasedInc/libhat), a high-performance byte-pattern scanning library for game hacking,
 Rewritten from C++20 to Rust with matching C, C++, C#, and Java bindings.
@@ -23,8 +23,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-libhat = { git = "https://github.com/BasedInc/libhat.git" }
-libhat-macros = { git = "https://github.com/BasedInc/libhat.git" }
+libhat = { git = "https://github.com/EpsteinIslandGaming/libhat-rs.git" }
+libhat-macros = { git = "https://github.com/EpsteinIslandGaming/libhat-rs.git" }
 ```
 
 Basic scanning:

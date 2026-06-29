@@ -5,7 +5,7 @@ set(LIBHAT_VERSION 0.0.0)
 project(libhat
     VERSION ${LIBHAT_VERSION}
     DESCRIPTION "A Rust byte-pattern scanning library with C/C++, C#, and Java bindings"
-    HOMEPAGE_URL "https://github.com/BasedInc/libhat"
+    HOMEPAGE_URL "https://github.com/EpsteinIslandGaming/libhat-rs"
     LANGUAGES C CXX
 )
 
