@@ -58,7 +58,7 @@ jobs:
       matrix:
         os: [
           #ubuntu-26.04-arm,
-          windows-latest-arm
+          windows-11-vs2026-arm
         ]
     runs-on: ${{ matrix.os }}
     steps:
