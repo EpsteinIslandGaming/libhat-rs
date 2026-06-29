@@ -1,0 +1,41 @@
+[package]
+name = "libhat"
+version = "0.10.0"
+edition = "2021"
+description = "A modern, high-performance library for byte pattern scanning in Rust"
+license = "MIT"
+
+[lib]
+name = "hat"
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+libc = "0.2"
+cfg-if = "1.0"
+libhat-macros = { version = "0.10.0", path = "libhat-macros" }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+] }
+
+[features]
+default = []
+avx512 = []
+
+[workspace]
+members = ["libhat-macros"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+libc = "0.2"
+
+[[bench]]
+name = "scanner"
+harness = false
