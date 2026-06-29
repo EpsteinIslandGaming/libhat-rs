@@ -1,20 +1,24 @@
-use std::ffi::{CString, OsStr};
+use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::slice;
 
-use windows_sys::Win32::System::Diagnostics::Debug::IMAGE_NT_HEADERS;
-use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetModuleInformation, GetModuleFileNameW};
+use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Memory::VirtualQuery;
+use windows_sys::Win32::System::ProcessStatus::{GetModuleInformation, MODULEINFO};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
-use windows_sys::Win32::System::SystemInformation::GetSystemInfo;
 use windows_sys::Win32::System::Diagnostics::Debug::{
-    IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER,
+    IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER,
     IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE,
 };
+use windows_sys::Win32::System::SystemServices::IMAGE_DOS_HEADER;
 use windows_sys::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
 
 use crate::process::Module;
 use crate::protection::Protection;
+
+const PROT_READ: u32 = 1;
+const PROT_WRITE: u32 = 2;
+const PROT_EXEC: u32 = 4;
 
 pub fn get_process_module() -> Option<Module> {
     get_module("")
@@ -25,7 +29,7 @@ pub fn get_module(name: &str) -> Option<Module> {
         if name.is_empty() {
             let handle = GetModuleHandleW(std::ptr::null());
             if handle == 0 { return None; }
-            let mut info = std::mem::zeroed::<windows_sys::Win32::System::Diagnostics::Debug::MODULEINFO>();
+            let mut info = std::mem::zeroed::<MODULEINFO>();
             if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info)) == 0 {
                 return None;
             }
@@ -37,7 +41,7 @@ pub fn get_module(name: &str) -> Option<Module> {
                 .collect();
             let handle = GetModuleHandleW(wide.as_ptr());
             if handle == 0 { return None; }
-            let mut info = std::mem::zeroed::<windows_sys::Win32::System::Diagnostics::Debug::MODULEINFO>();
+            let mut info = std::mem::zeroed::<MODULEINFO>();
             if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info)) == 0 {
                 return None;
             }
@@ -74,7 +78,6 @@ pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> 
             as *const IMAGE_SECTION_HEADER;
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
-        let name_bytes = name.as_bytes();
         for i in 0..num_sections {
             let section = sections.add(i as usize);
             let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr() as *const u8, 8);
@@ -173,17 +176,17 @@ pub fn region_has_flags(region: &[u8], flags: u32) -> bool {
 
             let prot = mbi.Protect;
             let mut has_flags = false;
-            if flags & libc::PROT_READ != 0 {
+            if flags & PROT_READ != 0 {
                 has_flags |= prot & (windows_sys::Win32::System::Memory::PAGE_READONLY
                     | windows_sys::Win32::System::Memory::PAGE_READWRITE
                     | windows_sys::Win32::System::Memory::PAGE_EXECUTE_READ
                     | windows_sys::Win32::System::Memory::PAGE_EXECUTE_READWRITE) != 0;
             }
-            if flags & libc::PROT_WRITE != 0 {
+            if flags & PROT_WRITE != 0 {
                 has_flags |= prot & (windows_sys::Win32::System::Memory::PAGE_READWRITE
                     | windows_sys::Win32::System::Memory::PAGE_EXECUTE_READWRITE) != 0;
             }
-            if flags & libc::PROT_EXEC != 0 {
+            if flags & PROT_EXEC != 0 {
                 has_flags |= prot & (windows_sys::Win32::System::Memory::PAGE_EXECUTE
                     | windows_sys::Win32::System::Memory::PAGE_EXECUTE_READ
                     | windows_sys::Win32::System::Memory::PAGE_EXECUTE_READWRITE) != 0;
