@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "libhat"
+version = "0.10.0"
+description = "A high-performance byte pattern scanning library"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Seized and Desisted" }]
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["."]

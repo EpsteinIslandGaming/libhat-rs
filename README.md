@@ -1,7 +1,14 @@
 # libhat-rs
 
 A Rust rewrite of [libhat](https://github.com/BasedInc/libhat), a high-performance byte-pattern scanning library for game hacking,
-Rewritten from C++20 to Rust with matching C, C++, C#, and Java bindings.
+Rewritten from C++20 to Rust with matching C, C++, C#, Java, and Python bindings.
+
+## Why?
+
+C and C++ are both fake languages.
+Rust gives memory safety and is overall 20x better than those languages,
+the project offers C/C++ bindings if you really don't want to rewrite your stuff in Rust
+(not memory leaking is worth an entire rewrite).
 
 ## Feature overview
 
@@ -9,6 +16,7 @@ Rewritten from C++20 to Rust with matching C, C++, C#, and Java bindings.
 - Vectorized scanning for byte patterns using CPU SIMD intrinsics:
   - SSE 4.1 and AVX2 on x86/x64 (`std::arch`)
   - AVX-512 on x64 (optional feature `avx512`)
+  - NEON on ARM
   - Scalar fallback
 - Compile-time signature parsing via proc-macro (`libhat-macros`)
 - C API exported as a `cdylib` for FFI from any language
