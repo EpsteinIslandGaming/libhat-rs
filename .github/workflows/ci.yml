@@ -53,7 +53,11 @@ jobs:
         run: cargo test --features avx512 --verbose
 
   build-and-test-arm:
-    runs-on: ubuntu-26.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04-arm, windows-latest-arm]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - name: Install Rust toolchain
