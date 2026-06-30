@@ -4,3 +4,4 @@
 /bindings/zig/.zig-cache
 /examples/zig/.zig-cache
 /examples/zig/zig-out
+__pycache__/
