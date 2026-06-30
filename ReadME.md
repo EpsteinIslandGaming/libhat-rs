@@ -1,6 +1,6 @@
 # libhat-rs
 
-A Rust rewrite of [libhat](https://github.com/BasedInc/libhat), a high-performance byte-pattern scanning library for game hacking,
+A Rust rewrite of [libhat](https://github.com/BasedInc/libhat), a high-performance byte-pattern scanning library for game hacking.
 Rewritten from C++20 to Rust with matching C, C++, C#, Java, Python, and Zig bindings.
 
 ## Why?
@@ -10,20 +10,14 @@ Rust gives memory safety and is overall 20x better than those languages,
 the project offers C/C++ bindings if you really don't want to rewrite your stuff in Rust
 (not memory leaking is worth an entire rewrite).
 
-## Feature overview
+## Differences from upstream
 
-- Cross-platform (Linux, Windows, macOS)
-- Vectorized scanning for byte patterns using CPU SIMD intrinsics:
-  - SSE 4.1 and AVX2 on x86/x64 (`std::arch`)
-  - AVX-512 on x64 (optional feature `avx512`)
-  - NEON on ARM
-  - Scalar fallback
-- Compile-time signature parsing via proc-macro (`libhat-macros`)
-- C API exported as a `cdylib` for FFI from any language
-- C++ binding headers wrapping the C API
-- C# bindings (P/Invoke)
-- Java bindings (JNA)
-- Criterion benchmarks
+- ARM NEON support, makes the scanner faster on ARM.
+- in Rust instead of C++, gives memory safety.
+- Zig and Python bindings
+  - (upstream had "experimental Python bindings" in a separate repo but literally only supported a single function)
+- full macOS support, and `module::get_section_data` support for Linux
+- probably more
 
 ## Usage
 
@@ -58,8 +52,8 @@ Headers and bindings are in the `bindings/` directory, and their examples are in
 
 ### C API (`bindings/c/libhat.h`)
 
-[Module Example](examples/c/module/main.c)
-[Buffer Example](examples/c/buffer/main.c)
+- [Module Example](examples/c/module/main.c)
+- [Buffer Example](examples/c/buffer/main.c)
 
 ### C++ API (`bindings/cpp/libhat.hpp`)
 
@@ -71,8 +65,8 @@ Headers and bindings are in the `bindings/` directory, and their examples are in
 
 ### C# bindings (`bindings/cs/`)
 
-[Buffer Example](examples/cs/buffer/Program.cs)
-[Module Example](examples/cs/module/Program.cs)
+- [Buffer Example](examples/cs/buffer/Program.cs)
+- [Module Example](examples/cs/module/Program.cs)
 
 ### Java bindings (`bindings/java/`)
 
