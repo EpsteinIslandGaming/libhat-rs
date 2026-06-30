@@ -336,15 +336,13 @@ pub fn region_has_flags(region: &[u8], flags: u32) -> bool {
     unsafe {
         let task = mach_task_self_();
         let flavor: i32 = 9;
-        let mut object_name: libc::mach_port_t = 0;
         let mut info = [0u32; 16];
-        let mut count = 16u32;
 
         while current < end {
             let mut addr = current;
             let mut size: u64 = 0;
-            count = 16;
-            object_name = 0;
+            let mut count = 16u32;
+            let mut object_name: libc::mach_port_t = 0;
 
             let kr = mach_vm_region(
                 task,

@@ -1,3 +1,4 @@
+use std::alloc::{alloc, dealloc, Layout};
 use std::ffi::CStr;
 use std::ptr;
 
@@ -42,26 +43,31 @@ fn to_cpp_signature_error(err: signature::SignatureError) -> LibhatStatus {
 }
 
 unsafe fn allocate_signature(sig: &[SignatureElement]) -> *mut Signature {
-    let sig_bytes = std::slice::from_raw_parts(
-        sig.as_ptr() as *const u8,
-        std::mem::size_of_val(sig),
-    );
-    let total_size = std::mem::size_of::<Signature>() + sig_bytes.len();
-    let mem = libc::malloc(total_size) as *mut u8;
+    let layout = Layout::new::<Signature>();
+    let mem = alloc(layout);
     if mem.is_null() {
         return ptr::null_mut();
     }
     let sig_ptr = mem as *mut Signature;
-    let data_ptr = mem.add(std::mem::size_of::<Signature>()) as *mut SignatureElement;
-    (*sig_ptr).data = data_ptr;
     (*sig_ptr).count = sig.len();
-    ptr::copy_nonoverlapping(sig_bytes.as_ptr(), data_ptr as *mut u8, sig_bytes.len());
+    if sig.is_empty() {
+        (*sig_ptr).data = ptr::null_mut();
+        return sig_ptr;
+    }
+    let data_layout = Layout::array::<SignatureElement>(sig.len()).unwrap();
+    let data_ptr = alloc(data_layout) as *mut SignatureElement;
+    if data_ptr.is_null() {
+        dealloc(mem, layout);
+        return ptr::null_mut();
+    }
+    (*sig_ptr).data = data_ptr;
+    ptr::copy_nonoverlapping(sig.as_ptr(), data_ptr, sig.len());
     sig_ptr
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn libhat_parse_signature(
-    signature_str: *const libc::c_char,
+    signature_str: *const std::ffi::c_char,
     signature_out: *mut *mut Signature,
 ) -> LibhatStatus {
     if signature_str.is_null() || signature_out.is_null() {
@@ -91,8 +97,8 @@ pub unsafe extern "C" fn libhat_parse_signature(
 
 #[no_mangle]
 pub unsafe extern "C" fn libhat_create_signature(
-    bytes: *const libc::c_char,
-    mask: *const libc::c_char,
+    bytes: *const std::ffi::c_char,
+    mask: *const std::ffi::c_char,
     size: usize,
     signature_out: *mut *mut Signature,
 ) -> LibhatStatus {
@@ -123,10 +129,10 @@ pub unsafe extern "C" fn libhat_create_signature(
 #[no_mangle]
 pub unsafe extern "C" fn libhat_find_pattern(
     signature: *const Signature,
-    buffer: *const libc::c_void,
+    buffer: *const std::ffi::c_void,
     size: usize,
     align: ScanAlignmentC,
-) -> *const libc::c_void {
+) -> *const std::ffi::c_void {
     if signature.is_null() || buffer.is_null() {
         return ptr::null();
     }
@@ -137,7 +143,7 @@ pub unsafe extern "C" fn libhat_find_pattern(
 
     let result = scanner::find_pattern(begin, end, sig, to_cpp_align(align), ScanHint::NONE);
     if result.has_result() {
-        result.get() as *const libc::c_void
+        result.get() as *const std::ffi::c_void
     } else {
         ptr::null()
     }
@@ -146,10 +152,10 @@ pub unsafe extern "C" fn libhat_find_pattern(
 #[no_mangle]
 pub unsafe extern "C" fn libhat_find_pattern_mod(
     signature: *const Signature,
-    module_ptr: *const libc::c_void,
-    section: *const libc::c_char,
+    module_ptr: *const std::ffi::c_void,
+    section: *const std::ffi::c_char,
     align: ScanAlignmentC,
-) -> *const libc::c_void {
+) -> *const std::ffi::c_void {
     if signature.is_null() || module_ptr.is_null() || section.is_null() {
         return ptr::null();
     }
@@ -174,7 +180,7 @@ pub unsafe extern "C" fn libhat_find_pattern_mod(
                         ScanHint::NONE,
                     );
                     if result.has_result() {
-                        result.get() as *const libc::c_void
+        result.get() as *const std::ffi::c_void
                     } else {
                         ptr::null()
                     }
@@ -187,19 +193,19 @@ pub unsafe extern "C" fn libhat_find_pattern_mod(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn libhat_module_at(address: *const libc::c_void) -> *const libc::c_void {
+pub unsafe extern "C" fn libhat_module_at(address: *const std::ffi::c_void) -> *const std::ffi::c_void {
     if address.is_null() {
         return ptr::null();
     }
     let mod_at = crate::process::module_at(address as *const u8, None);
-    mod_at.map(|m| m.address() as *const libc::c_void).unwrap_or(ptr::null())
+    mod_at.map(|m| m.address() as *const std::ffi::c_void).unwrap_or(ptr::null())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn libhat_get_module(name: *const libc::c_char) -> *const libc::c_void {
+pub unsafe extern "C" fn libhat_get_module(name: *const std::ffi::c_char) -> *const std::ffi::c_void {
     if name.is_null() {
         let mod_at = crate::process::get_process_module();
-        return mod_at.map(|m| m.address() as *const libc::c_void).unwrap_or(ptr::null());
+        return mod_at.map(|m| m.address() as *const std::ffi::c_void).unwrap_or(ptr::null());
     }
 
     let name_str = match CStr::from_ptr(name).to_str() {
@@ -208,12 +214,18 @@ pub unsafe extern "C" fn libhat_get_module(name: *const libc::c_char) -> *const 
     };
 
     let mod_at = crate::process::get_module(name_str);
-    mod_at.map(|m| m.address() as *const libc::c_void).unwrap_or(ptr::null())
+    mod_at.map(|m| m.address() as *const std::ffi::c_void).unwrap_or(ptr::null())
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn libhat_free(mem: *mut libc::c_void) {
-    if !mem.is_null() {
-        libc::free(mem);
+pub unsafe extern "C" fn libhat_free(mem: *mut std::ffi::c_void) {
+    if mem.is_null() {
+        return;
     }
+    let sig_ptr = mem as *mut Signature;
+    if !(*sig_ptr).data.is_null() {
+        let data_layout = Layout::array::<SignatureElement>((*sig_ptr).count).unwrap();
+        dealloc((*sig_ptr).data as *mut u8, data_layout);
+    }
+    dealloc(mem as *mut u8, Layout::new::<Signature>());
 }

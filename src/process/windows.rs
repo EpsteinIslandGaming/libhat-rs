@@ -28,7 +28,7 @@ pub fn get_module(name: &str) -> Option<Module> {
     unsafe {
         if name.is_empty() {
             let handle = GetModuleHandleW(std::ptr::null());
-            if handle == 0 { return None; }
+            if handle.is_null() { return None; }
             let mut info = std::mem::zeroed::<MODULEINFO>();
             if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info) as u32) == 0 {
                 return None;
@@ -40,7 +40,7 @@ pub fn get_module(name: &str) -> Option<Module> {
                 .chain(std::iter::once(0))
                 .collect();
             let handle = GetModuleHandleW(wide.as_ptr());
-            if handle == 0 { return None; }
+            if handle.is_null() { return None; }
             let mut info = std::mem::zeroed::<MODULEINFO>();
             if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info) as u32) == 0 {
                 return None;

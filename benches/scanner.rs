@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 use hat::signature::parse_signature;
 use hat::scanner::{find_pattern, find_all_pattern, ScanAlignment, ScanHint};
