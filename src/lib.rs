@@ -23,7 +23,7 @@ pub use signature::{SignatureElement, Signature, SignatureView, FixedSignature};
 pub use signature::{compile_signature, parse_signature, parse_signature_to, to_string};
 pub use signature::SignatureError as signature_error;
 pub use result::ScanResult;
-pub use scanner::{ScanAlignment, ScanHint, find_pattern, find_all_pattern};
+pub use scanner::{ScanAlignment, ScanHint, find_pattern, find_pattern_parallel, find_all_pattern};
 
 /// Compile-time signature parsing macro.
 ///

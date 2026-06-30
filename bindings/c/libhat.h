@@ -59,6 +59,13 @@ LIBHAT_API const void* libhat_find_pattern(
     scan_alignment_t    align
 );
 
+LIBHAT_API const void* libhat_find_pattern_parallel(
+    const signature_t*  signature,
+    const void*         buffer,
+    size_t              size,
+    scan_alignment_t    align
+);
+
 LIBHAT_API const void* libhat_find_pattern_mod(
     const signature_t*  signature,
     const void*         module,

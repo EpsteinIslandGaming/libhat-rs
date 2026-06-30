@@ -207,10 +207,14 @@ pub fn scan_single_raw(
     let cmp_byte = sig[cmp_index].value();
     let scan_end = unsafe { end.sub(sig_size).add(1).add(cmp_index) };
 
+    let second_index = cmp_index + 1;
+    let use_second = second_index < sig_size && sig[second_index].is_all();
+    let second_value = if use_second { sig[second_index].value() } else { 0 };
+
     let mut i = unsafe { begin.add(cmp_index) };
     while i < scan_end {
         unsafe {
-            if *i == cmp_byte {
+            if *i == cmp_byte && (!use_second || *i.add(1) == second_value) {
                 let start = i.sub(cmp_index);
                 if sig.iter().enumerate().all(|(j, e)| e.matches(*start.add(j))) {
                     return ConstScanResult::new(start);
@@ -231,6 +235,59 @@ fn find_pattern_internal(
 ) -> ConstScanResult {
     let context = ScanContext::new(signature, alignment, hints);
     unsafe { context.scan(begin, end) }
+}
+
+pub fn find_pattern_parallel(
+    begin: *const u8,
+    end: *const u8,
+    signature: SignatureView,
+    alignment: ScanAlignment,
+    hints: ScanHint,
+) -> ConstScanResult {
+    let len = (end as usize).wrapping_sub(begin as usize);
+    let sig_len = signature.len();
+
+    if begin >= end || sig_len > len {
+        return ConstScanResult::null();
+    }
+
+    const PARALLEL_THRESHOLD: usize = 1024 * 1024;
+    let num_threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+
+    if len < PARALLEL_THRESHOLD || num_threads <= 1 {
+        return find_pattern_internal(begin, end, signature, alignment, hints);
+    }
+
+    let chunk_size = len / num_threads;
+    let context = ScanContext::new(signature, alignment, hints);
+
+    let context = &context;
+    std::thread::scope(|s| {
+        let mut handles = Vec::with_capacity(num_threads);
+        for i in 0..num_threads {
+            let chunk_begin = (begin as usize) + i * chunk_size;
+            let chunk_end_raw = if i == num_threads - 1 {
+                end as usize
+            } else {
+                let ce = chunk_begin + chunk_size + sig_len - 1;
+                if ce > end as usize { end as usize } else { ce }
+            };
+
+            handles.push(s.spawn(move || unsafe {
+                context.scan(chunk_begin as *const u8, chunk_end_raw as *const u8)
+            }));
+        }
+
+        for h in handles {
+            let result = h.join().unwrap();
+            if result.has_result() {
+                return result;
+            }
+        }
+        ConstScanResult::null()
+    })
 }
 
 pub fn find_pattern(

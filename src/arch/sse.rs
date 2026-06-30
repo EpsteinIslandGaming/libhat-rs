@@ -5,15 +5,17 @@ use crate::result::ConstScanResult;
 
 #[target_feature(enable = "sse4.1")]
 unsafe fn load_sig_128(sig: &[crate::signature::SignatureElement]) -> (__m128i, __m128i) {
-    let mut bytes = [0u8; 16];
-    let mut mask = [0u8; 16];
+    #[repr(align(16))]
+    struct Aligned([u8; 16]);
+    let mut bytes = Aligned([0u8; 16]);
+    let mut mask = Aligned([0u8; 16]);
     for (i, e) in sig.iter().enumerate().take(16) {
-        bytes[i] = e.value();
-        mask[i] = e.mask();
+        bytes.0[i] = e.value();
+        mask.0[i] = e.mask();
     }
     (
-        _mm_loadu_si128(bytes.as_ptr() as *const __m128i),
-        _mm_loadu_si128(mask.as_ptr() as *const __m128i),
+        _mm_load_si128(bytes.0.as_ptr() as *const __m128i),
+        _mm_load_si128(mask.0.as_ptr() as *const __m128i),
     )
 }
 
@@ -83,6 +85,7 @@ pub(crate) unsafe fn scan_sse(
 
     let mut it = vec_start;
     while it < vec_it_end {
+        _mm_prefetch((it as *const u8).add(256) as *const i8, _MM_HINT_T0);
         let data = _mm_load_si128(it);
         let cmp = _mm_cmpeq_epi8(first_byte, data);
         let mut mask: u16 = _mm_movemask_epi8(cmp) as u16;

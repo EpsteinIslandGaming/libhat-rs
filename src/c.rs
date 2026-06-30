@@ -150,6 +150,29 @@ pub unsafe extern "C" fn libhat_find_pattern(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn libhat_find_pattern_parallel(
+    signature: *const Signature,
+    buffer: *const std::ffi::c_void,
+    size: usize,
+    align: ScanAlignmentC,
+) -> *const std::ffi::c_void {
+    if signature.is_null() || buffer.is_null() {
+        return ptr::null();
+    }
+
+    let sig = std::slice::from_raw_parts((*signature).data, (*signature).count);
+    let begin = buffer as *const u8;
+    let end = begin.add(size);
+
+    let result = scanner::find_pattern_parallel(begin, end, sig, to_cpp_align(align), ScanHint::NONE);
+    if result.has_result() {
+        result.get() as *const std::ffi::c_void
+    } else {
+        ptr::null()
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn libhat_find_pattern_mod(
     signature: *const Signature,
     module_ptr: *const std::ffi::c_void,

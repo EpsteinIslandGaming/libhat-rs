@@ -7,15 +7,17 @@ pub(crate) mod avx512_impl {
 
     #[target_feature(enable = "avx512f,avx512bw")]
     unsafe fn load_sig_512(sig: &[crate::signature::SignatureElement]) -> (__m512i, __m512i) {
-        let mut bytes = [0u8; 64];
-        let mut mask = [0u8; 64];
+        #[repr(align(64))]
+        struct Aligned([u8; 64]);
+        let mut bytes = Aligned([0u8; 64]);
+        let mut mask = Aligned([0u8; 64]);
         for (i, e) in sig.iter().enumerate().take(64) {
-            bytes[i] = e.value();
-            mask[i] = e.mask();
+            bytes.0[i] = e.value();
+            mask.0[i] = e.mask();
         }
         (
-            _mm512_loadu_si512(bytes.as_ptr() as *const __m512i),
-            _mm512_loadu_si512(mask.as_ptr() as *const __m512i),
+            _mm512_load_si512(bytes.0.as_ptr() as *const __m512i),
+            _mm512_load_si512(mask.0.as_ptr() as *const __m512i),
         )
     }
 
@@ -80,6 +82,7 @@ pub(crate) mod avx512_impl {
         let mut it = vec_start;
 
         while it < vec_it_end {
+            _mm_prefetch((it as *const u8).add(256) as *const i8, _MM_HINT_T0);
             let data = _mm512_load_si512(it);
             let mut mask: u64 = _mm512_cmpeq_epi8_mask(first_byte, data);
 

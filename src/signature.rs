@@ -81,20 +81,41 @@ impl fmt::Display for SignatureError {
 
 pub type SignatureResult<T> = Result<T, SignatureError>;
 
-fn parse_int(s: &str, base: u8) -> Option<u8> {
-    u8::from_str_radix(s, base as u32).ok()
+fn char_to_digit(ch: char) -> Option<u8> {
+    Some(match ch {
+        '0'..='9' => ch as u8 - b'0',
+        'A'..='F' => ch as u8 - b'A' + 10,
+        'a'..='f' => ch as u8 - b'a' + 10,
+        _ => return None,
+    })
 }
 
 fn parse_signature_element(word: &str, base: u8) -> Option<SignatureElement> {
     let mut value: u8 = 0;
     let mut mask: u8 = 0;
-    for ch in word.chars() {
-        value = value.wrapping_mul(base);
-        mask = mask.wrapping_mul(base);
-        if ch != '?' {
-            let digit = parse_int(&ch.to_string(), base)?;
-            value += digit;
-            mask += base - 1;
+    if base == 16 {
+        for ch in word.chars() {
+            value <<= 4;
+            mask <<= 4;
+            if ch != '?' {
+                let digit = char_to_digit(ch)?;
+                value |= digit;
+                mask |= 0xF;
+            }
+        }
+    } else {
+        for ch in word.chars() {
+            value = value.wrapping_mul(base);
+            mask = mask.wrapping_mul(base);
+            if ch != '?' {
+                let digit = match ch {
+                    '0' => 0u8,
+                    '1' => 1u8,
+                    _ => return None,
+                };
+                value += digit;
+                mask += base - 1;
+            }
         }
     }
     Some(SignatureElement::from_value_mask(value, mask))
@@ -138,7 +159,7 @@ pub fn parse_signature_to(sig: &mut Vec<SignatureElement>, str: &str) -> Signatu
 }
 
 pub fn parse_signature(str: &str) -> SignatureResult<Signature> {
-    let mut sig = Signature::new();
+    let mut sig = Signature::with_capacity(str.len() / 2);
     parse_signature_to(&mut sig, str)?;
     Ok(sig)
 }

@@ -6,10 +6,14 @@ pub struct ScanResult {
     ptr: *mut u8,
 }
 
+unsafe impl Send for ScanResult {}
+
 #[derive(Clone, Copy)]
 pub struct ConstScanResult {
     ptr: *const u8,
 }
+
+unsafe impl Send for ConstScanResult {}
 
 impl ScanResult {
     pub fn new(ptr: *mut u8) -> Self {

@@ -40,3 +40,13 @@
 #else
     #define LIBHAT_FORCEINLINE inline
 #endif
+
+#if defined(__GNUC__) || defined(__clang__)
+    #include <xmmintrin.h>
+    #define LIBHAT_PREFETCH(addr) _mm_prefetch(reinterpret_cast<const char*>(addr), _MM_HINT_T0)
+#elif defined(_MSC_VER)
+    #include <intrin.h>
+    #define LIBHAT_PREFETCH(addr) _mm_prefetch(reinterpret_cast<const char*>(addr), _MM_HINT_T0)
+#else
+    #define LIBHAT_PREFETCH(addr) ((void)0)
+#endif

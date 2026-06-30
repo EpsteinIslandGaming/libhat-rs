@@ -74,6 +74,34 @@ LIBHAT_EXPORT namespace hat {
         inline scan_alignment_t to_c_align(scan_alignment align) {
             return static_cast<scan_alignment_t>(align);
         }
+
+        inline const_scan_result do_find_pattern(
+            const std::byte* begin,
+            const std::byte* end,
+            signature_t& c_sig,
+            scan_alignment alignment)
+        {
+            auto result = libhat_find_pattern(
+                &c_sig,
+                begin,
+                static_cast<size_t>(end - begin),
+                detail::to_c_align(alignment));
+            return const_scan_result{static_cast<const std::byte*>(result)};
+        }
+
+        inline const_scan_result do_find_pattern_parallel(
+            const std::byte* begin,
+            const std::byte* end,
+            signature_t& c_sig,
+            scan_alignment alignment)
+        {
+            auto result = libhat_find_pattern_parallel(
+                &c_sig,
+                begin,
+                static_cast<size_t>(end - begin),
+                detail::to_c_align(alignment));
+            return const_scan_result{static_cast<const std::byte*>(result)};
+        }
     }
 
     inline const_scan_result find_pattern(
@@ -90,13 +118,7 @@ LIBHAT_EXPORT namespace hat {
         c_sig.data = tmp.data();
         c_sig.count = tmp.size();
 
-        auto result = libhat_find_pattern(
-            &c_sig,
-            begin,
-            static_cast<size_t>(end - begin),
-            detail::to_c_align(alignment));
-
-        return const_scan_result{static_cast<const std::byte*>(result)};
+        return detail::do_find_pattern(begin, end, c_sig, alignment);
     }
 
     inline const_scan_result find_pattern(
@@ -107,4 +129,73 @@ LIBHAT_EXPORT namespace hat {
     {
         return find_pattern(range.data(), range.data() + range.size(), sig, alignment, hints);
     }
+
+    inline const_scan_result find_pattern(
+        const std::execution::parallel_policy&,
+        const std::byte*        begin,
+        const std::byte*        end,
+        signature_view          sig,
+        scan_alignment          alignment = scan_alignment::X1,
+        scan_hint               /*hints*/ = scan_hint::none)
+    {
+        if (sig.empty()) return nullptr;
+
+        std::vector<signature_element> tmp(sig.begin(), sig.end());
+        signature_t c_sig;
+        c_sig.data = tmp.data();
+        c_sig.count = tmp.size();
+
+        return detail::do_find_pattern_parallel(begin, end, c_sig, alignment);
+    }
+
+    /// A pre-compiled scanner that caches the signature for repeated use.
+    class scanner {
+    public:
+        explicit scanner(
+            signature_view sig_view,
+            scan_alignment alignment = scan_alignment::X1)
+            : storage_(sig_view.begin(), sig_view.end())
+            , alignment_(alignment)
+        {
+        }
+
+        explicit scanner(
+            signature sig,
+            scan_alignment alignment = scan_alignment::X1)
+            : storage_(std::move(sig))
+            , alignment_(alignment)
+        {
+        }
+
+        [[nodiscard]] const_scan_result find(
+            const std::byte* begin,
+            const std::byte* end) const
+        {
+            signature_t c_sig;
+            c_sig.data = const_cast<signature_element*>(storage_.data());
+            c_sig.count = storage_.size();
+            return detail::do_find_pattern(begin, end, c_sig, alignment_);
+        }
+
+        [[nodiscard]] const_scan_result find(
+            std::span<const std::byte> range) const
+        {
+            return find(range.data(), range.data() + range.size());
+        }
+
+        [[nodiscard]] const_scan_result find(
+            const std::execution::parallel_policy&,
+            const std::byte* begin,
+            const std::byte* end) const
+        {
+            signature_t c_sig;
+            c_sig.data = const_cast<signature_element*>(storage_.data());
+            c_sig.count = storage_.size();
+            return detail::do_find_pattern_parallel(begin, end, c_sig, alignment_);
+        }
+
+    private:
+        signature storage_;
+        scan_alignment alignment_;
+    };
 }
