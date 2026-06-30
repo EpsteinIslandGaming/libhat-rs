@@ -17,7 +17,7 @@ fn test_c_api_parse_and_scan() {
     let result = unsafe {
         c::libhat_find_pattern(
             sig_out,
-            data.as_ptr() as *const libc::c_void,
+            data.as_ptr() as *const std::ffi::c_void,
             data.len(),
             c::ScanAlignmentC::X1,
         )
@@ -25,7 +25,7 @@ fn test_c_api_parse_and_scan() {
     assert!(!result.is_null());
     assert_eq!(result as usize, unsafe { data.as_ptr().add(1) as usize });
 
-    unsafe { c::libhat_free(sig_out as *mut libc::c_void) };
+    unsafe { c::libhat_free(sig_out as *mut std::ffi::c_void) };
 }
 
 #[test]
@@ -42,14 +42,14 @@ fn test_c_api_not_found() {
     let result = unsafe {
         c::libhat_find_pattern(
             sig_out,
-            data.as_ptr() as *const libc::c_void,
+            data.as_ptr() as *const std::ffi::c_void,
             data.len(),
             c::ScanAlignmentC::X1,
         )
     };
     assert!(result.is_null());
 
-    unsafe { c::libhat_free(sig_out as *mut libc::c_void) };
+    unsafe { c::libhat_free(sig_out as *mut std::ffi::c_void) };
 }
 
 #[test]
@@ -152,8 +152,8 @@ fn test_c_api_create_signature() {
 
     let status = unsafe {
         c::libhat_create_signature(
-            bytes.as_ptr() as *const libc::c_char,
-            mask.as_ptr() as *const libc::c_char,
+            bytes.as_ptr() as *const std::ffi::c_char,
+            mask.as_ptr() as *const std::ffi::c_char,
             bytes.len(),
             &mut sig_out,
         )
@@ -165,12 +165,12 @@ fn test_c_api_create_signature() {
     let result = unsafe {
         c::libhat_find_pattern(
             sig_out,
-            data.as_ptr() as *const libc::c_void,
+            data.as_ptr() as *const std::ffi::c_void,
             data.len(),
             c::ScanAlignmentC::X1,
         )
     };
     assert!(!result.is_null());
 
-    unsafe { c::libhat_free(sig_out as *mut libc::c_void) };
+    unsafe { c::libhat_free(sig_out as *mut std::ffi::c_void) };
 }
