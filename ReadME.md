@@ -54,57 +54,38 @@ fn main() {
 ## Language bindings
 
 The shared library (`libhat.so` / `libhat.dylib` / `hat.dll`) exports a `extern "C"` API.
-Headers and bindings are in the `bindings/` directory.
+Headers and bindings are in the `bindings/` directory, and their examples are in the `examples/` directory.
 
 ### C API (`bindings/c/libhat.h`)
 
-```c
-#include <libhat.h>
-
-signature_t* sig = NULL;
-libhat_parse_signature("48 8D 05 ? ? ? ?", &sig);
-const void* result = libhat_find_pattern(sig, buffer, size, scan_alignment_x1);
-libhat_free(sig);
-```
+[Module Example](examples/c/module/main.c)
+[Buffer Example](examples/c/buffer/main.c)
 
 ### C++ API (`bindings/cpp/libhat.hpp`)
 
-```cpp
-#include <libhat.hpp>
-
-auto sig = hat::parse_signature("48 8D 05 ? ? ? ?");
-if (sig) {
-    auto result = hat::find_pattern(data, *sig);
-    if (result) {
-        auto addr = result.rel(3);
-    }
-}
-```
+[Example](examples/cpp/header/main.cpp)
 
 ### C++20 module (`bindings/cpp/module/libhat.cppm`)
 
-```cpp
-import libhat;
-
-auto result = hat::find_pattern(data, hat::parse_signature("48 8D 05 ? ? ? ?").value());
-```
+[Example](examples/cpp/module/main.cpp)
 
 ### C# bindings (`bindings/cs/`)
 
-```csharp
-using Hat;
-
-var result = Native.FindPattern("48 8D 05 ? ? ? ?", buffer, alignment);
-```
+[Buffer Example](examples/cs/buffer/Program.cs)
+[Module Example](examples/cs/module/Program.cs)
 
 ### Java bindings (`bindings/java/`)
 
-```java
-import me.zero.libhat.*;
+[Example](examples/java/HatExample.java)
 
-var sig = Libhat.parseSignature("48 8D 05 ? ? ? ?");
-var result = Libhat.findPattern(sig, buffer, alignment);
-```
+### Python bindings (`bindings/python/`)
+
+[Example](examples/python/basic.py)
+
+### Zig bindings (`bindings/zig/`)
+
+- [Scanning in a module](examples/zig/module/main.zig)
+- [Scanning a buffer](examples/zig/buffer/main.zig)
 
 ## Pattern/Signature syntax
 
