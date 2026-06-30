@@ -110,13 +110,12 @@ up the vectorized scanning algorithms.
 
 ## Platform support
 
-
 | API                        | Linux | Windows | macOS |
 |----------------------------|:-----:|:-------:|:-----:|
-| `get_process_module`       |   ✅  |    ✅    |  ✅  |
-| `get_module`               |   ✅  |    ✅    |  ✅  |
-| `module::get_section_data` |   ✅  |    ✅    |  ✅  |
-| Scanning (SSE/AVX2)        |   ✅  |    ✅    |  ✅  |
+| `get_process_module`       |   ✅   |    ✅    |   ✅   |
+| `get_module`               |   ✅   |    ✅    |   ✅   |
+| `module::get_section_data` |   ✅   |    ✅    |   ✅   |
+| Scanning (SSE/AVX2)        |   ✅   |    ✅    |   ✅   |
 
 ## Versioning
 
