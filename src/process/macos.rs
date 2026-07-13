@@ -277,7 +277,92 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
     }
 }
 
-pub fn module_at(address: *const u8, _size: Option<usize>) -> Option<Module> {
+pub fn get_executable_data(module: &Module) -> &[u8] {
+    if let Some(text) = get_section_data(module, ".text") {
+        return text;
+    }
+
+    let slide = match slide_for_module(module) {
+        Some(s) => s as usize,
+        None => return &[],
+    };
+    let cmds = cmds_slice(module);
+
+    let mut i = 0;
+    while i + size_of::<libc::load_command>() <= cmds.len() {
+        let lc = unsafe { &*(cmds.as_ptr().add(i) as *const libc::load_command) };
+        if lc.cmdsize == 0 || i + lc.cmdsize as usize > cmds.len() {
+            break;
+        }
+        if lc.cmd == LC_SEGMENT_64 {
+            let seg_size = size_of::<libc::segment_command_64>();
+            if i + seg_size <= cmds.len() {
+                let seg =
+                    unsafe { &*(cmds.as_ptr().add(i) as *const libc::segment_command_64) };
+                if seg.vmsize > 0 && segname_str(&seg.segname) != "__PAGEZERO" {
+                    let prot = segment_protection(seg.initprot);
+                    if prot.contains(Protection::READ) && !prot.contains(Protection::WRITE) && prot.contains(Protection::EXECUTE) {
+                        return segment_data(seg, slide);
+                    }
+                }
+            }
+        }
+        i += lc.cmdsize as usize;
+    }
+    &[]
+}
+
+pub fn for_each_section(module: &Module, callback: &mut dyn FnMut(&str, &[u8], Protection) -> bool) {
+    let slide = match slide_for_module(module) {
+        Some(s) => s as usize,
+        None => return,
+    };
+    let cmds = cmds_slice(module);
+
+    let mut i = 0;
+    while i + size_of::<libc::load_command>() <= cmds.len() {
+        let lc = unsafe { &*(cmds.as_ptr().add(i) as *const libc::load_command) };
+        if lc.cmdsize == 0 || i + lc.cmdsize as usize > cmds.len() {
+            break;
+        }
+        if lc.cmd == LC_SEGMENT_64 {
+            let seg_size = size_of::<libc::segment_command_64>();
+            if i + seg_size <= cmds.len() {
+                let seg =
+                    unsafe { &*(cmds.as_ptr().add(i) as *const libc::segment_command_64) };
+                let sec_base = i + seg_size;
+                let sec_total = seg.nsects as usize * size_of::<Section64>();
+                if sec_base + sec_total <= i + lc.cmdsize as usize {
+                    for j in 0..seg.nsects as usize {
+                        let sec_off = sec_base + j * size_of::<Section64>();
+                        let sec =
+                            unsafe { &*(cmds.as_ptr().add(sec_off) as *const Section64) };
+                        if sec.size > 0 {
+                            let sname = segname_str(&sec.sectname);
+                            let gname = segname_str(&sec.segname);
+                            let data = unsafe {
+                                slice::from_raw_parts(
+                                    (slide + sec.addr as usize) as *const u8,
+                                    sec.size as usize,
+                                )
+                            };
+                            let mut prot = segment_protection(seg.initprot);
+                            if sec.flags & 0x800 != 0 { prot |= Protection::READ; }
+                            if sec.flags & 0x400 != 0 { prot |= Protection::WRITE; }
+                            if sec.flags & 0x200 != 0 { prot |= Protection::EXECUTE; }
+                            if !callback(sname, data, prot) {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        i += lc.cmdsize as usize;
+    }
+}
+
+pub fn module_at(address: *const u8) -> Option<Module> {
     let target = address as usize;
     unsafe {
         let count = _dyld_image_count();

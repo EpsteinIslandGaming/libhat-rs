@@ -9,14 +9,16 @@ C and C++ are both fake languages.
 Rust gives memory safety and is overall 20x better than those languages,
 the project offers C/C++ bindings if you really don't want to rewrite your stuff in Rust
 (not memory leaking is worth an entire rewrite).
+Also, the upstream repository is dead anyway.
 
 ## Differences from upstream
 
-- ARM NEON support, makes the scanner faster on ARM.
+- ARM NEON support (now in upstream), makes the scanner faster on ARM.
 - in Rust instead of C++, gives memory safety.
 - Zig and Python bindings
   - (upstream had "experimental Python bindings" in a separate repo but literally only supported a single function)
 - full macOS support, and `module::get_section_data` support for Linux
+- Multi-threading optimization (now in upstream)
 - probably more
 
 ## Usage

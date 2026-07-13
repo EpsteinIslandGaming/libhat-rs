@@ -2,13 +2,14 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::slice;
 
-use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS};
 use windows_sys::Win32::System::Memory::VirtualQuery;
 use windows_sys::Win32::System::ProcessStatus::{GetModuleInformation, MODULEINFO};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
 use windows_sys::Win32::System::Diagnostics::Debug::{
     IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER,
     IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE,
+    IMAGE_FIRST_SECTION,
 };
 use windows_sys::Win32::System::SystemServices::IMAGE_DOS_HEADER;
 use windows_sys::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
@@ -50,10 +51,10 @@ pub fn get_module(name: &str) -> Option<Module> {
     }
 }
 
-unsafe fn get_nt_headers(base: usize) -> Option<*mut IMAGE_NT_HEADERS64> {
+unsafe fn get_nt_headers(base: usize) -> Option<*const IMAGE_NT_HEADERS64> {
     let dos = base as *const IMAGE_DOS_HEADER;
     if (*dos).e_magic != 0x5A4D { return None; }
-    let nt = (base + (*dos).e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+    let nt = (base + (*dos).e_lfanew as usize) as *const IMAGE_NT_HEADERS64;
     if (*nt).Signature != 0x00004550 { return None; }
     Some(nt)
 }
@@ -70,16 +71,43 @@ pub fn get_module_data(module: &Module) -> &[u8] {
     }
 }
 
+pub fn get_executable_data(module: &Module) -> &[u8] {
+    if let Some(text) = get_section_data(module, ".text") {
+        return text;
+    }
+
+    unsafe {
+        let base = module.address();
+        let nt = match get_nt_headers(base) {
+            Some(h) => h,
+            None => return &[],
+        };
+
+        let first_section = IMAGE_FIRST_SECTION(nt);
+        let num_sections = (*nt).FileHeader.NumberOfSections;
+        for i in 0..num_sections {
+            let section = &*first_section.add(i as usize);
+            let c = section.Characteristics;
+            if (c & IMAGE_SCN_MEM_READ != 0) && (c & IMAGE_SCN_MEM_WRITE == 0) && (c & IMAGE_SCN_MEM_EXECUTE != 0) {
+                return slice::from_raw_parts(
+                    (base + section.VirtualAddress as usize) as *const u8,
+                    section.Misc.VirtualSize as usize,
+                );
+            }
+        }
+        &[]
+    }
+}
+
 pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> {
     unsafe {
         let base = module.address();
         let nt = get_nt_headers(base)?;
-        let sections = (nt as usize + std::mem::size_of::<u32>() + std::mem::size_of::<IMAGE_NT_HEADERS64>())
-            as *const IMAGE_SECTION_HEADER;
+        let first_section = IMAGE_FIRST_SECTION(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
         for i in 0..num_sections {
-            let section = sections.add(i as usize);
+            let section = &*first_section.add(i as usize);
             let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr(), 8);
             let sec_name_trimmed = std::str::from_utf8(sec_name)
                 .unwrap_or("")
@@ -87,12 +115,47 @@ pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> 
             if sec_name_trimmed == name {
                 let data = slice::from_raw_parts(
                     (base + (*section).VirtualAddress as usize) as *const u8,
-                    (*section).SizeOfRawData as usize,
+                    (*section).Misc.VirtualSize as usize,
                 );
                 return Some(data);
             }
         }
         None
+    }
+}
+
+pub fn for_each_section(module: &Module, callback: &mut dyn FnMut(&str, &[u8], Protection) -> bool) {
+    unsafe {
+        let base = module.address();
+        let nt = match get_nt_headers(base) {
+            Some(h) => h,
+            None => return,
+        };
+        let first_section = IMAGE_FIRST_SECTION(nt);
+        let num_sections = (*nt).FileHeader.NumberOfSections;
+
+        for i in 0..num_sections {
+            let section = &*first_section.add(i as usize);
+            let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr(), 8);
+            let sec_name_trimmed = std::str::from_utf8(sec_name)
+                .unwrap_or("")
+                .trim_end_matches('\0');
+
+            let data = slice::from_raw_parts(
+                (base + (*section).VirtualAddress as usize) as *const u8,
+                (*section).Misc.VirtualSize as usize,
+            );
+
+            let mut prot = Protection::empty();
+            let charact = (*section).Characteristics;
+            if charact & IMAGE_SCN_MEM_READ != 0 { prot |= Protection::READ; }
+            if charact & IMAGE_SCN_MEM_WRITE != 0 { prot |= Protection::WRITE; }
+            if charact & IMAGE_SCN_MEM_EXECUTE != 0 { prot |= Protection::EXECUTE; }
+
+            if !callback(sec_name_trimmed, data, prot) {
+                break;
+            }
+        }
     }
 }
 
@@ -103,15 +166,14 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
             Some(h) => h,
             None => return,
         };
-        let sections = (nt as usize + std::mem::size_of::<u32>() + std::mem::size_of::<IMAGE_NT_HEADERS64>())
-            as *const IMAGE_SECTION_HEADER;
+        let first_section = IMAGE_FIRST_SECTION(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
         for i in 0..num_sections {
-            let section = sections.add(i as usize);
+            let section = &*first_section.add(i as usize);
             let data = slice::from_raw_parts(
                 (base + (*section).VirtualAddress as usize) as *const u8,
-                (*section).SizeOfRawData as usize,
+                (*section).Misc.VirtualSize as usize,
             );
 
             let mut prot = Protection::empty();
@@ -127,24 +189,24 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
     }
 }
 
-pub fn module_at(address: *const u8, _size: Option<usize>) -> Option<Module> {
+pub fn module_at(address: *const u8) -> Option<Module> {
     unsafe {
-        let mut mbi: MEMORY_BASIC_INFORMATION = std::mem::zeroed();
-        let result = VirtualQuery(
-            address as *const std::ffi::c_void,
-            &mut mbi,
-            std::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
+        let mut handle: windows_sys::Win32::Foundation::HMODULE = 0;
+        let status = GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+            address as *const u16,
+            &mut handle,
         );
-        if result == 0 { return None; }
-        let alloc_base = mbi.AllocationBase as usize;
-        if alloc_base == 0 { return None; }
+        if status == 0 {
+            return None;
+        }
 
-        let dos = alloc_base as *const IMAGE_DOS_HEADER;
-        if (*dos).e_magic != 0x5A4D { return None; }
-        let nt = (alloc_base + (*dos).e_lfanew as usize) as *const IMAGE_NT_HEADERS64;
-        if (*nt).Signature != 0x00004550 { return None; }
+        let mut info = std::mem::zeroed::<MODULEINFO>();
+        if GetModuleInformation(GetCurrentProcess(), handle, &mut info, std::mem::size_of_val(&info) as u32) == 0 {
+            return None;
+        }
 
-        Some(Module::new(alloc_base))
+        Some(Module::new(info.lpBaseOfDll as usize))
     }
 }
 

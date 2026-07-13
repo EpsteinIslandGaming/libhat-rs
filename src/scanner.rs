@@ -6,6 +6,7 @@ use std::arch::is_aarch64_feature_detected;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScanAlignment {
     X1 = 1,
+    X4 = 4,
     X16 = 16,
 }
 
@@ -16,12 +17,13 @@ impl ScanAlignment {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ScanHint(u64);
+pub struct ScanHint(pub u64);
 
 impl ScanHint {
     pub const NONE: ScanHint = ScanHint(0);
     pub const X86_64: ScanHint = ScanHint(1 << 0);
     pub const PAIR0: ScanHint = ScanHint(1 << 1);
+    pub const AARCH64: ScanHint = ScanHint(1 << 2);
 
     pub fn contains(self, other: ScanHint) -> bool {
         self.0 & other.0 == other.0
@@ -66,23 +68,21 @@ fn find_first_pair(sig: &[SignatureElement]) -> Option<usize> {
 }
 
 #[cfg(target_arch = "x86_64")]
-fn apply_hints_x86_64(sig: &[SignatureElement], hint: ScanHint) -> Option<usize> {
-    use crate::frequency;
+fn apply_freq_hints(
+    sig: &[SignatureElement],
+    hint: ScanHint,
+    pairs: &[(u8, u8); 512],
+    scores: &[u16; 512],
+) -> Option<usize> {
     use std::cmp::Ordering;
 
     let pair0 = hint.contains(ScanHint::PAIR0);
     let mut best_pair: Option<(usize, u16)> = None;
 
-    let pairs = frequency::PAIRS_X1;
-    let scores = frequency::SCORES_X1;
-
     for i in 0..sig.len().saturating_sub(1) {
         let a = sig[i];
         let b = sig[i + 1];
         if a.is_all() && b.is_all() {
-            if !hint.contains(ScanHint::X86_64) {
-                return Some(i);
-            }
             let pair = (a.value(), b.value());
             let idx = pairs.binary_search_by(|&p| {
                 if p.0 < pair.0 { Ordering::Less }
@@ -94,7 +94,7 @@ fn apply_hints_x86_64(sig: &[SignatureElement], hint: ScanHint) -> Option<usize>
                 Err(_) => scores.len() as u16,
             };
             match best_pair {
-                Some((_, best_score)) if score > best_score => {
+                Some((_, best_score)) if score < best_score => {
                     best_pair = Some((i, score));
                 }
                 None => {
@@ -161,10 +161,23 @@ impl<'a> ScanContext<'a> {
 
     fn apply_hints(&mut self) {
         let sig = self.signature;
+
         if self.hints.contains(ScanHint::X86_64) {
             #[cfg(target_arch = "x86_64")]
             {
-                if let Some(idx) = apply_hints_x86_64(sig, self.hints) {
+                use crate::frequency;
+                if let Some(idx) = apply_freq_hints(sig, self.hints, &frequency::PAIRS_X1, &frequency::SCORES_X1) {
+                    self.pair_index = Some(idx);
+                    return;
+                }
+            }
+        }
+
+        if self.hints.contains(ScanHint::AARCH64) {
+            #[cfg(target_arch = "aarch64")]
+            {
+                use crate::frequency;
+                if let Some(idx) = apply_freq_hints(sig, self.hints, &frequency::AARCH64_PAIRS_X1, &frequency::AARCH64_SCORES_X1) {
                     self.pair_index = Some(idx);
                     return;
                 }
@@ -184,7 +197,13 @@ impl<'a> ScanContext<'a> {
         }
 
         match self.mode {
-            ScanMode::Single => scan_single_raw(begin, end, self.signature, self.cmp_index),
+            ScanMode::Single => {
+                if self.alignment.stride() > 1 {
+                    scan_single_aligned(begin, end, self.signature, self.cmp_index, self.alignment.stride())
+                } else {
+                    scan_single_raw(begin, end, self.signature, self.cmp_index)
+                }
+            }
             #[cfg(target_arch = "x86_64")]
             ScanMode::Sse => crate::arch::sse::scan_sse(begin, end, self),
             #[cfg(target_arch = "x86_64")]
@@ -224,6 +243,51 @@ pub fn scan_single_raw(
         }
     }
     ConstScanResult::null()
+}
+
+pub(crate) fn scan_single_aligned(
+    begin: *const u8,
+    end: *const u8,
+    sig: &[SignatureElement],
+    cmp_index: usize,
+    stride: usize,
+) -> ConstScanResult {
+    let sig_size = sig.len();
+    let cmp_byte = sig[cmp_index].value();
+
+    let scan_begin = unsafe {
+        let aligned = align_up(begin.add(cmp_index), stride);
+        aligned
+    };
+    let scan_end = unsafe {
+        let raw_end = end.sub(sig_size).add(1).add(cmp_index);
+        let aligned = align_up(raw_end, stride);
+        aligned
+    };
+
+    if scan_begin >= scan_end {
+        return ConstScanResult::null();
+    }
+
+    let mut i = scan_begin;
+    while i < scan_end {
+        unsafe {
+            if *i == cmp_byte {
+                let start = i.sub(cmp_index);
+                if sig.iter().enumerate().all(|(j, e)| e.matches(*start.add(j))) {
+                    return ConstScanResult::new(start);
+                }
+            }
+            i = i.add(stride);
+        }
+    }
+    ConstScanResult::null()
+}
+
+fn align_up(ptr: *const u8, alignment: usize) -> *const u8 {
+    let addr = ptr as usize;
+    let rem = addr % alignment;
+    if rem == 0 { ptr } else { unsafe { ptr.add(alignment - rem) } }
 }
 
 fn find_pattern_internal(

@@ -5,3 +5,5 @@
 /examples/zig/.zig-cache
 /examples/zig/zig-out
 __pycache__/
+# clone of the original libhat, so I can look at it and update this.
+/libhat-cpp/

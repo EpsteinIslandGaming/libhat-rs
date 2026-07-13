@@ -18,8 +18,16 @@ impl Module {
         get_module_data_impl(self)
     }
 
+    pub fn get_executable_data(&self) -> &[u8] {
+        get_executable_data_impl(self)
+    }
+
     pub fn get_section_data<'a>(&'a self, name: &str) -> Option<&'a [u8]> {
         get_section_data_impl(self, name)
+    }
+
+    pub fn for_each_section(&self, callback: &mut dyn FnMut(&str, &[u8], Protection) -> bool) {
+        for_each_section_impl(self, callback)
     }
 
     pub fn for_each_segment(&self, callback: &mut dyn FnMut(&[u8], Protection) -> bool) {
@@ -49,8 +57,16 @@ fn get_module_data_impl(module: &Module) -> &[u8] {
     platform::get_module_data(module)
 }
 
+fn get_executable_data_impl(module: &Module) -> &[u8] {
+    platform::get_executable_data(module)
+}
+
 fn get_section_data_impl<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> {
     platform::get_section_data(module, name)
+}
+
+fn for_each_section_impl(module: &Module, callback: &mut dyn FnMut(&str, &[u8], Protection) -> bool) {
+    platform::for_each_section(module, callback)
 }
 
 fn for_each_segment_impl(module: &Module, callback: &mut dyn FnMut(&[u8], Protection) -> bool) {
@@ -65,8 +81,8 @@ pub fn get_module(name: &str) -> Option<Module> {
     platform::get_module(name)
 }
 
-pub fn module_at(address: *const u8, size: Option<usize>) -> Option<Module> {
-    platform::module_at(address, size)
+pub fn module_at(address: *const u8) -> Option<Module> {
+    platform::module_at(address)
 }
 
 pub fn is_readable(_region: &[u8]) -> bool {
