@@ -1,6 +1,6 @@
 [package]
 name = "libhat-macros"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 description = "Compile-time signature parsing for libhat"
 license = "MIT"

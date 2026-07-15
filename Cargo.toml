@@ -1,6 +1,6 @@
 [package]
 name = "libhat"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 description = "A modern, high-performance library for byte pattern scanning in Rust"
 license = "MIT"
@@ -11,7 +11,7 @@ path = "src/lib.rs"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-libhat-macros = { version = "0.10.1", path = "libhat-macros" }
+libhat-macros = { version = "0.10.2", path = "libhat-macros" }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [

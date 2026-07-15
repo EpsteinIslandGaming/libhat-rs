@@ -2,15 +2,27 @@ use std::ffi::{CStr, CString};
 use std::ptr;
 use std::sync::OnceLock;
 
-use crate::signature::{self, SignatureElement};
-use crate::scanner::{self, ScanAlignment, ScanHint};
 use crate::process::Module;
 use crate::protection::Protection;
+use crate::scanner::{self, ScanAlignment, ScanHint};
+use crate::signature::{self, SignatureElement};
 
-const VERSION: &str = "0.10.0";
-const VERSION_MAJOR: u32 = 0;
-const VERSION_MINOR: u32 = 10;
-const VERSION_PATCH: u32 = 0;
+const fn parse_u32(s: &str) -> u32 {
+    let bytes = s.as_bytes();
+    let mut result = 0u32;
+    let mut i = 0;
+    while i < bytes.len() {
+        result = result * 10 + (bytes[i] - b'0') as u32;
+        i += 1;
+    }
+    result
+}
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+// TODO: figure out a way to not hardcode these
+const VERSION_MAJOR: u32 = parse_u32(env!("CARGO_PKG_VERSION_MAJOR"));
+const VERSION_MINOR: u32 = parse_u32(env!("CARGO_PKG_VERSION_MINOR"));
+const VERSION_PATCH: u32 = parse_u32(env!("CARGO_PKG_VERSION_PATCH"));
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -63,9 +75,15 @@ impl libhat_protection {
 
     fn from_rust(prot: Protection) -> Self {
         let mut p = 0u32;
-        if prot.contains(Protection::READ) { p |= Self::READ.0; }
-        if prot.contains(Protection::WRITE) { p |= Self::WRITE.0; }
-        if prot.contains(Protection::EXECUTE) { p |= Self::EXECUTE.0; }
+        if prot.contains(Protection::READ) {
+            p |= Self::READ.0;
+        }
+        if prot.contains(Protection::WRITE) {
+            p |= Self::WRITE.0;
+        }
+        if prot.contains(Protection::EXECUTE) {
+            p |= Self::EXECUTE.0;
+        }
         libhat_protection(p)
     }
 }
@@ -155,7 +173,9 @@ fn to_cpp_signature_error(err: signature::SignatureError) -> libhat_status {
 #[no_mangle]
 pub unsafe extern "C" fn libhat_get_version() -> *const std::ffi::c_char {
     static VERSION_CSTRING: OnceLock<CString> = OnceLock::new();
-    VERSION_CSTRING.get_or_init(|| CString::new(VERSION).unwrap()).as_ptr()
+    VERSION_CSTRING
+        .get_or_init(|| CString::new(VERSION).unwrap())
+        .as_ptr()
 }
 
 #[no_mangle]
@@ -195,7 +215,11 @@ pub unsafe extern "C" fn libhat_parse_signature(
     match signature::parse_signature(c_str) {
         Ok(sig) => {
             let boxed = Box::new(libhat_signature {
-                header: OpaqueHeader { magic: OBJECT_MAGIC, type_id: SIGNATURE_TYPE_ID, destroy: destroy_signature },
+                header: OpaqueHeader {
+                    magic: OBJECT_MAGIC,
+                    type_id: SIGNATURE_TYPE_ID,
+                    destroy: destroy_signature,
+                },
                 inner: sig,
             });
             *signature_out = Box::into_raw(boxed);
@@ -221,6 +245,10 @@ pub unsafe extern "C" fn libhat_create_signature(
     if size != 0 && (bytes.is_null() || mask.is_null()) {
         return libhat_status::InvalidArgumentValue;
     }
+    if size == 0 {
+        *signature_out = ptr::null();
+        return libhat_status::SigEmptySignature;
+    }
 
     let bytes_slice = std::slice::from_raw_parts(bytes.cast::<u8>(), size);
     let mask_slice = std::slice::from_raw_parts(mask.cast::<u8>(), size);
@@ -238,7 +266,11 @@ pub unsafe extern "C" fn libhat_create_signature(
     }
 
     let boxed = Box::new(libhat_signature {
-        header: OpaqueHeader { magic: OBJECT_MAGIC, type_id: SIGNATURE_TYPE_ID, destroy: destroy_signature },
+        header: OpaqueHeader {
+            magic: OBJECT_MAGIC,
+            type_id: SIGNATURE_TYPE_ID,
+            destroy: destroy_signature,
+        },
         inner: sig,
     });
     *signature_out = Box::into_raw(boxed);
@@ -372,9 +404,15 @@ pub unsafe extern "C" fn libhat_module_get_data(
     *out = match (*module).inner {
         Some(m) => {
             let data = m.get_module_data();
-            libhat_span { data: data.as_ptr(), size: data.len() }
+            libhat_span {
+                data: data.as_ptr(),
+                size: data.len(),
+            }
         }
-        None => libhat_span { data: ptr::null(), size: 0 },
+        None => libhat_span {
+            data: ptr::null(),
+            size: 0,
+        },
     };
     libhat_status::Success
 }
@@ -393,9 +431,15 @@ pub unsafe extern "C" fn libhat_module_get_executable_data(
     *out = match (*module).inner {
         Some(m) => {
             let data = m.get_executable_data();
-            libhat_span { data: data.as_ptr(), size: data.len() }
+            libhat_span {
+                data: data.as_ptr(),
+                size: data.len(),
+            }
         }
-        None => libhat_span { data: ptr::null(), size: 0 },
+        None => libhat_span {
+            data: ptr::null(),
+            size: 0,
+        },
     };
     libhat_status::Success
 }
@@ -415,16 +459,28 @@ pub unsafe extern "C" fn libhat_module_get_section_data(
     let name_str = match CStr::from_ptr(name).to_str() {
         Ok(s) => s,
         Err(_) => {
-            *out = libhat_span { data: ptr::null(), size: 0 };
+            *out = libhat_span {
+                data: ptr::null(),
+                size: 0,
+            };
             return libhat_status::InvalidArgumentValue;
         }
     };
     *out = match (*module).inner {
         Some(m) => match m.get_section_data(name_str) {
-            Some(data) => libhat_span { data: data.as_ptr(), size: data.len() },
-            None => libhat_span { data: ptr::null(), size: 0 },
+            Some(data) => libhat_span {
+                data: data.as_ptr(),
+                size: data.len(),
+            },
+            None => libhat_span {
+                data: ptr::null(),
+                size: 0,
+            },
         },
-        None => libhat_span { data: ptr::null(), size: 0 },
+        None => libhat_span {
+            data: ptr::null(),
+            size: 0,
+        },
     };
     libhat_status::Success
 }
@@ -451,7 +507,10 @@ pub unsafe extern "C" fn libhat_module_for_each_section(
             Ok(n) => n,
             Err(_) => return true,
         };
-        let span = libhat_span { data: data.as_ptr(), size: data.len() };
+        let span = libhat_span {
+            data: data.as_ptr(),
+            size: data.len(),
+        };
         let libhat_prot = libhat_protection::from_rust(prot);
         callback(c_name.as_ptr(), span, libhat_prot, user_data)
     });
@@ -476,7 +535,10 @@ pub unsafe extern "C" fn libhat_module_for_each_segment(
     };
 
     mod_ref.for_each_segment(&mut |data, prot| {
-        let span = libhat_span { data: data.as_ptr(), size: data.len() };
+        let span = libhat_span {
+            data: data.as_ptr(),
+            size: data.len(),
+        };
         let libhat_prot = libhat_protection::from_rust(prot);
         callback(span, libhat_prot, user_data)
     });
@@ -516,7 +578,11 @@ pub unsafe extern "C" fn libhat_get_process_module() -> *const libhat_module {
     match module {
         Some(m) => {
             let boxed = Box::new(libhat_module {
-                header: OpaqueHeader { magic: OBJECT_MAGIC, type_id: MODULE_TYPE_ID, destroy: destroy_module },
+                header: OpaqueHeader {
+                    magic: OBJECT_MAGIC,
+                    type_id: MODULE_TYPE_ID,
+                    destroy: destroy_module,
+                },
                 inner: Some(m),
             });
             Box::into_raw(boxed)
@@ -540,7 +606,11 @@ pub unsafe extern "C" fn libhat_get_module(name: *const std::ffi::c_char) -> *co
     match module {
         Some(m) => {
             let boxed = Box::new(libhat_module {
-                header: OpaqueHeader { magic: OBJECT_MAGIC, type_id: MODULE_TYPE_ID, destroy: destroy_module },
+                header: OpaqueHeader {
+                    magic: OBJECT_MAGIC,
+                    type_id: MODULE_TYPE_ID,
+                    destroy: destroy_module,
+                },
                 inner: Some(m),
             });
             Box::into_raw(boxed)
@@ -550,7 +620,9 @@ pub unsafe extern "C" fn libhat_get_module(name: *const std::ffi::c_char) -> *co
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn libhat_module_at(address: *const std::ffi::c_void) -> *const libhat_module {
+pub unsafe extern "C" fn libhat_module_at(
+    address: *const std::ffi::c_void,
+) -> *const libhat_module {
     if address.is_null() {
         return ptr::null();
     }
@@ -558,7 +630,11 @@ pub unsafe extern "C" fn libhat_module_at(address: *const std::ffi::c_void) -> *
     match module {
         Some(m) => {
             let boxed = Box::new(libhat_module {
-                header: OpaqueHeader { magic: OBJECT_MAGIC, type_id: MODULE_TYPE_ID, destroy: destroy_module },
+                header: OpaqueHeader {
+                    magic: OBJECT_MAGIC,
+                    type_id: MODULE_TYPE_ID,
+                    destroy: destroy_module,
+                },
                 inner: Some(m),
             });
             Box::into_raw(boxed)
