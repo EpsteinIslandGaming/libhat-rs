@@ -25,7 +25,7 @@ def _find_library() -> str:
         if os.path.isfile(c):
             return os.path.abspath(c)
     raise OSError(
-        f"libhat shared library not found. Set LIBHAT_PATH or build with `cargo build --release`"
+        "libhat shared library not found. Set LIBHAT_PATH or build with `cargo build --release`"
     )
 
 
@@ -103,9 +103,7 @@ def parse_signature(sig_str: str) -> ctypes.pointer:
     return sig_out
 
 
-def create_signature(
-    bytes_: bytes, mask: Optional[bytes] = None
-) -> ctypes.pointer:
+def create_signature(bytes_: bytes, mask: Optional[bytes] = None) -> ctypes.pointer:
     n = len(bytes_)
     if mask is None:
         mask = b"\xff" * n
@@ -114,9 +112,7 @@ def create_signature(
     bytes_arr = (ctypes.c_ubyte * n).from_buffer_copy(bytes_)
     mask_arr = (ctypes.c_ubyte * n).from_buffer_copy(mask)
     sig_out = ctypes.POINTER(_Signature)()
-    status = _lib.libhat_create_signature(
-        bytes_arr, mask_arr, n, ctypes.byref(sig_out)
-    )
+    status = _lib.libhat_create_signature(bytes_arr, mask_arr, n, ctypes.byref(sig_out))
     _check_status(status)
     return sig_out
 
@@ -125,9 +121,7 @@ def free_signature(sig: ctypes.pointer) -> None:
     _lib.libhat_free(ctypes.cast(sig, ctypes.c_void_p))
 
 
-def find_pattern(
-    sig: ctypes.pointer, buffer: bytes, align: int = 0
-) -> Optional[int]:
+def find_pattern(sig: ctypes.pointer, buffer: bytes, align: int = 0) -> Optional[int]:
     buf = (ctypes.c_ubyte * len(buffer)).from_buffer_copy(buffer)
     ptr = _lib.libhat_find_pattern(sig, buf, len(buffer), align)
     if not ptr:
