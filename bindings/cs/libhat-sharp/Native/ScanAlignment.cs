@@ -9,7 +9,12 @@ public enum ScanAlignment
 	/// The result is not aligned.
 	/// </summary>
 	X1,
-	
+
+	/// <summary>
+	/// The result is aligned to 4 bytes.
+	/// </summary>
+	X4,
+
 	/// <summary>
 	/// The result is aligned to 16 bytes.
 	/// </summary>

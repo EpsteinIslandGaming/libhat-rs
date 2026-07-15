@@ -28,7 +28,8 @@ pub const Status = enum(c_int) {
 /// Alignment requirement for scan result addresses.
 pub const ScanAlignment = enum(c_int) {
     x1 = 0,
-    x16 = 1,
+    x4 = 1,
+    x16 = 2,
 };
 
 /// Errors that can occur during libhat operations.

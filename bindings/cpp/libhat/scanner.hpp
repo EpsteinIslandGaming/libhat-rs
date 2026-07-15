@@ -51,7 +51,8 @@ LIBHAT_EXPORT namespace hat {
 
     enum class scan_alignment : uint8_t {
         X1 = 0,
-        X16 = 1,
+        X4 = 1,
+        X16 = 2,
     };
 
     enum class scan_hint : uint64_t {

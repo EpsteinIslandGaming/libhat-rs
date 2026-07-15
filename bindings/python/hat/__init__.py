@@ -29,12 +29,14 @@ __all__ = [
 ]
 
 X1 = 0
-X16 = 1
+X4 = 1
+X16 = 2
 
 
 class ScanAlignment:
     X1 = 0
-    X16 = 1
+    X4 = 1
+    X16 = 2
 
 
 class Signature:

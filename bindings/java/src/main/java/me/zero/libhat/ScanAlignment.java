@@ -10,6 +10,11 @@ public enum ScanAlignment {
     X1,
 
     /**
+     * 4 byte alignment
+     */
+    X4,
+
+    /**
      * 16 byte alignment
      */
     X16
