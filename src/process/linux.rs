@@ -154,16 +154,11 @@ fn get_or_create_inner(module: &Module) -> &'static ModuleInner {
 
     {
         let mut map = cache.lock().unwrap();
-        if !map.contains_key(&addr) {
-            map.insert(
-                addr,
-                Box::new(ModuleInner {
-                    base_address: addr,
-                    path: OnceLock::new(),
-                    sections: OnceLock::new(),
-                }),
-            );
-        }
+        map.entry(addr).or_insert_with(|| Box::new(ModuleInner {
+            base_address: addr,
+            path: OnceLock::new(),
+            sections: OnceLock::new(),
+        }));
     }
 
     let map = cache.lock().unwrap();

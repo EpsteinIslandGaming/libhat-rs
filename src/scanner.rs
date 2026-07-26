@@ -67,7 +67,7 @@ fn find_first_pair(sig: &[SignatureElement]) -> Option<usize> {
     sig.windows(2).position(|w| w[0].is_all() && w[1].is_all())
 }
 
-#[cfg(target_arch = "x86_64")]
+#[allow(dead_code)]
 fn apply_freq_hints(
     sig: &[SignatureElement],
     hint: ScanHint,
@@ -256,13 +256,11 @@ pub(crate) fn scan_single_aligned(
     let cmp_byte = sig[cmp_index].value();
 
     let scan_begin = unsafe {
-        let aligned = align_up(begin.add(cmp_index), stride);
-        aligned
+        align_up(begin.add(cmp_index), stride)
     };
     let scan_end = unsafe {
         let raw_end = end.sub(sig_size).add(1).add(cmp_index);
-        let aligned = align_up(raw_end, stride);
-        aligned
+        align_up(raw_end, stride)
     };
 
     if scan_begin >= scan_end {

@@ -7,9 +7,8 @@ use windows_sys::Win32::System::Memory::VirtualQuery;
 use windows_sys::Win32::System::ProcessStatus::{GetModuleInformation, MODULEINFO};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
 use windows_sys::Win32::System::Diagnostics::Debug::{
-    IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER,
+    IMAGE_NT_HEADERS64, IMAGE_FILE_HEADER, IMAGE_SECTION_HEADER,
     IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE,
-    IMAGE_FIRST_SECTION,
 };
 use windows_sys::Win32::System::SystemServices::IMAGE_DOS_HEADER;
 use windows_sys::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
@@ -20,6 +19,11 @@ use crate::protection::Protection;
 const PROT_READ: u32 = 1;
 const PROT_WRITE: u32 = 2;
 const PROT_EXEC: u32 = 4;
+
+unsafe fn image_first_section(nt: *const IMAGE_NT_HEADERS64) -> *const IMAGE_SECTION_HEADER {
+    let optional_offset = std::mem::size_of::<u32>() + std::mem::size_of::<IMAGE_FILE_HEADER>();
+    (nt as *const u8).add(optional_offset + (*nt).FileHeader.SizeOfOptionalHeader as usize) as *const IMAGE_SECTION_HEADER
+}
 
 pub fn get_process_module() -> Option<Module> {
     get_module("")
@@ -83,7 +87,7 @@ pub fn get_executable_data(module: &Module) -> &[u8] {
             None => return &[],
         };
 
-        let first_section = IMAGE_FIRST_SECTION(nt);
+        let first_section = image_first_section(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
         for i in 0..num_sections {
             let section = &*first_section.add(i as usize);
@@ -103,7 +107,7 @@ pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> 
     unsafe {
         let base = module.address();
         let nt = get_nt_headers(base)?;
-        let first_section = IMAGE_FIRST_SECTION(nt);
+        let first_section = image_first_section(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
         for i in 0..num_sections {
@@ -131,7 +135,7 @@ pub fn for_each_section(module: &Module, callback: &mut dyn FnMut(&str, &[u8], P
             Some(h) => h,
             None => return,
         };
-        let first_section = IMAGE_FIRST_SECTION(nt);
+        let first_section = image_first_section(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
         for i in 0..num_sections {
@@ -166,7 +170,7 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
             Some(h) => h,
             None => return,
         };
-        let first_section = IMAGE_FIRST_SECTION(nt);
+        let first_section = image_first_section(nt);
         let num_sections = (*nt).FileHeader.NumberOfSections;
 
         for i in 0..num_sections {
@@ -191,7 +195,7 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
 
 pub fn module_at(address: *const u8) -> Option<Module> {
     unsafe {
-        let mut handle: windows_sys::Win32::Foundation::HMODULE = 0;
+        let mut handle: windows_sys::Win32::Foundation::HMODULE = std::ptr::null_mut();
         let status = GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
             address as *const u16,
@@ -212,7 +216,7 @@ pub fn module_at(address: *const u8) -> Option<Module> {
 
 pub fn get_symbol(module: &Module, name: &str) -> usize {
     unsafe {
-        let mut handle: windows_sys::Win32::Foundation::HMODULE = 0;
+        let mut handle: windows_sys::Win32::Foundation::HMODULE = std::ptr::null_mut();
         let status = GetModuleHandleExW(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
             module.address() as *const u16,
@@ -225,8 +229,10 @@ pub fn get_symbol(module: &Module, name: &str) -> usize {
             Ok(n) => n,
             Err(_) => return 0,
         };
-        let sym = windows_sys::Win32::System::LibraryLoader::GetProcAddress(handle, c_name.as_ptr());
-        sym as usize
+        match GetProcAddress(handle, c_name.as_ptr().cast::<u8>()) {
+            Some(f) => f as usize,
+            None => 0,
+        }
     }
 }
 

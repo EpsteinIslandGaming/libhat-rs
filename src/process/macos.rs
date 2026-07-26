@@ -339,7 +339,7 @@ pub fn for_each_section(module: &Module, callback: &mut dyn FnMut(&str, &[u8], P
                             unsafe { &*(cmds.as_ptr().add(sec_off) as *const Section64) };
                         if sec.size > 0 {
                             let sname = segname_str(&sec.sectname);
-                            let gname = segname_str(&sec.segname);
+                            let _gname = segname_str(&sec.segname);
                             let data = unsafe {
                                 slice::from_raw_parts(
                                     (slide + sec.addr as usize) as *const u8,
