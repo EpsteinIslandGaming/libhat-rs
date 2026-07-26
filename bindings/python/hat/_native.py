@@ -77,6 +77,9 @@ _lib.libhat_find_pattern_mod.restype = ctypes.c_void_p
 _lib.libhat_module_at.argtypes = [ctypes.c_void_p]
 _lib.libhat_module_at.restype = ctypes.c_void_p
 
+_lib.libhat_module_get_symbol.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
+_lib.libhat_module_get_symbol.restype = ctypes.c_int
+
 _lib.libhat_get_module.argtypes = [ctypes.c_char_p]
 _lib.libhat_get_module.restype = ctypes.c_void_p
 
@@ -157,3 +160,13 @@ def get_module(name: Optional[str] = None) -> Optional[int]:
     if not ptr:
         return None
     return ptr
+
+
+def module_get_symbol(module: int, name: str) -> Optional[int]:
+    result = ctypes.c_void_p()
+    status = _lib.libhat_module_get_symbol(
+        ctypes.c_void_p(module), name.encode("utf-8"), ctypes.byref(result)
+    )
+    if status != LibhatStatus.Success:
+        return None
+    return result.value

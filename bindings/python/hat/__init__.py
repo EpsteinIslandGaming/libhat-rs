@@ -14,6 +14,7 @@ from hat._native import (
     find_pattern_mod as _find_pattern_mod,
     module_at as _module_at,
     get_module as _get_module,
+    module_get_symbol as _module_get_symbol,
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "get_process_module",
     "get_module",
     "module_at",
+    "module_get_symbol",
 ]
 
 X1 = 0
@@ -109,3 +111,7 @@ def get_module(name: str) -> Optional[int]:
 
 def module_at(address: int) -> Optional[int]:
     return _module_at(address)
+
+
+def module_get_symbol(module: int, name: str) -> Optional[int]:
+    return _module_get_symbol(module, name)

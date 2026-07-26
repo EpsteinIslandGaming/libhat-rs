@@ -83,6 +83,8 @@ extern fn libhat_module_at(address: *const anyopaque) ?*anyopaque;
 
 extern fn libhat_get_module(name: ?[*:0]const u8) ?*anyopaque;
 
+extern fn libhat_module_get_symbol(module: ?*const anyopaque, name: [*:0]const u8) ?*anyopaque;
+
 extern fn libhat_free(mem: ?*anyopaque) void;
 
 /// A compiled byte-pattern signature backed by a native heap allocation.
@@ -153,6 +155,12 @@ pub fn moduleAt(address: *const anyopaque) ?*anyopaque {
 /// If `name` is `null`, returns the main process module.
 pub fn getModule(name: ?[:0]const u8) ?*anyopaque {
     return libhat_get_module(if (name) |n| n.ptr else null);
+}
+
+/// Returns the absolute address of a named public symbol within a module.
+/// `module` is the module base address (returned by `getModule` or `moduleAt`).
+pub fn getSymbol(module: *const anyopaque, name: [:0]const u8) ?*anyopaque {
+    return libhat_module_get_symbol(module, name.ptr);
 }
 
 /// Get the main process module.

@@ -60,6 +60,11 @@ public interface Libhat extends Library {
     Pointer libhat_get_module(String name);
 
     /*
+     * libhat_status libhat_module_get_symbol(const libhat_module* module, const char* name, uintptr_t* out);
+     */
+    int libhat_module_get_symbol(Pointer module, String name, PointerByReference out);
+
+    /*
      * void libhat_free(void* mem);
      */
     void libhat_free(Pointer mem);

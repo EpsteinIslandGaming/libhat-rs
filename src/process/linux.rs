@@ -508,6 +508,30 @@ unsafe extern "C" fn module_at_cb(
     0
 }
 
+pub fn get_symbol(module: &Module, name: &str) -> usize {
+    let path = {
+        let inner = get_or_create_inner(module);
+        inner.path.get().cloned().unwrap_or_default()
+    };
+    let c_path = match CString::new(path) {
+        Ok(p) => p,
+        Err(_) => return 0,
+    };
+    let c_name = match CString::new(name) {
+        Ok(n) => n,
+        Err(_) => return 0,
+    };
+    unsafe {
+        let handle = dlopen(c_path.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);
+        if handle.is_null() {
+            return 0;
+        }
+        let sym = libc::dlsym(handle, c_name.as_ptr());
+        dlclose(handle);
+        sym as usize
+    }
+}
+
 pub fn region_has_flags(region: &[u8], flags: u32) -> bool {
     if region.is_empty() {
         return false;

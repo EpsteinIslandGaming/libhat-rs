@@ -78,6 +78,8 @@ LIBHAT_API const void* libhat_module_at(const void* address);
 
 LIBHAT_API const void* libhat_get_module(const char* name);
 
+LIBHAT_API const void* libhat_module_get_symbol(const void* module, const char* name);
+
 LIBHAT_API void libhat_free(void* mem);
 
 #ifdef __cplusplus

@@ -28,6 +28,11 @@ LIBHAT_EXPORT namespace hat::process {
 
         [[nodiscard]] std::span<const std::byte> get_section_data(std::string_view name) const;
 
+        [[nodiscard]] const void* get_symbol(std::string_view name) const {
+            std::string tmp(name);
+            return libhat_module_get_symbol(baseAddress_, tmp.c_str());
+        }
+
         [[nodiscard]] auto operator<=>(const module&) const noexcept = default;
 
     private:

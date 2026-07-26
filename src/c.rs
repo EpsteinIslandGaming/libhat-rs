@@ -391,6 +391,32 @@ pub unsafe extern "C" fn libhat_module_address(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn libhat_module_get_symbol(
+    module: *const libhat_module,
+    name: *const std::ffi::c_char,
+    out: *mut usize,
+) -> libhat_status {
+    if module.is_null() || name.is_null() || out.is_null() {
+        return libhat_status::InvalidArgumentValue;
+    }
+    if !check_module_type(module) {
+        return libhat_status::InvalidArgumentType;
+    }
+    let name_str = match CStr::from_ptr(name).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            *out = 0;
+            return libhat_status::InvalidArgumentValue;
+        }
+    };
+    *out = match (*module).inner {
+        Some(m) => m.get_symbol(name_str),
+        None => 0,
+    };
+    libhat_status::Success
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn libhat_module_get_data(
     module: *const libhat_module,
     out: *mut libhat_span,

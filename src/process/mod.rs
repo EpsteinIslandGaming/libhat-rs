@@ -33,6 +33,10 @@ impl Module {
     pub fn for_each_segment(&self, callback: &mut dyn FnMut(&[u8], Protection) -> bool) {
         for_each_segment_impl(self, callback)
     }
+
+    pub fn get_symbol(&self, name: &str) -> usize {
+        get_symbol_impl(self, name)
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -71,6 +75,10 @@ fn for_each_section_impl(module: &Module, callback: &mut dyn FnMut(&str, &[u8], 
 
 fn for_each_segment_impl(module: &Module, callback: &mut dyn FnMut(&[u8], Protection) -> bool) {
     platform::for_each_segment(module, callback)
+}
+
+fn get_symbol_impl(module: &Module, name: &str) -> usize {
+    platform::get_symbol(module, name)
 }
 
 pub fn get_process_module() -> Option<Module> {

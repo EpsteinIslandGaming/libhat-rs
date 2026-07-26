@@ -409,6 +409,34 @@ pub fn module_at(address: *const u8) -> Option<Module> {
     }
 }
 
+pub fn get_symbol(module: &Module, name: &str) -> usize {
+    let image_index = match find_image_index(module.address()) {
+        Some(i) => i,
+        None => return 0,
+    };
+    let img_name = match get_image_name(image_index) {
+        Some(n) => n,
+        None => return 0,
+    };
+    let c_path = match std::ffi::CString::new(img_name) {
+        Ok(p) => p,
+        Err(_) => return 0,
+    };
+    let c_name = match std::ffi::CString::new(name) {
+        Ok(n) => n,
+        Err(_) => return 0,
+    };
+    unsafe {
+        let handle = libc::dlopen(c_path.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);
+        if handle.is_null() {
+            return 0;
+        }
+        let sym = libc::dlsym(handle, c_name.as_ptr());
+        libc::dlclose(handle);
+        sym as usize
+    }
+}
+
 pub fn region_has_flags(region: &[u8], flags: u32) -> bool {
     if region.is_empty() {
         return false;

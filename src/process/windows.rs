@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::slice;
 
-use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS};
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetModuleHandleExW, GetProcAddress, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS};
 use windows_sys::Win32::System::Memory::VirtualQuery;
 use windows_sys::Win32::System::ProcessStatus::{GetModuleInformation, MODULEINFO};
 use windows_sys::Win32::System::Threading::GetCurrentProcess;
@@ -207,6 +207,26 @@ pub fn module_at(address: *const u8) -> Option<Module> {
         }
 
         Some(Module::new(info.lpBaseOfDll as usize))
+    }
+}
+
+pub fn get_symbol(module: &Module, name: &str) -> usize {
+    unsafe {
+        let mut handle: windows_sys::Win32::Foundation::HMODULE = 0;
+        let status = GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+            module.address() as *const u16,
+            &mut handle,
+        );
+        if status == 0 {
+            return 0;
+        }
+        let c_name = match std::ffi::CString::new(name) {
+            Ok(n) => n,
+            Err(_) => return 0,
+        };
+        let sym = windows_sys::Win32::System::LibraryLoader::GetProcAddress(handle, c_name.as_ptr());
+        sym as usize
     }
 }
 
