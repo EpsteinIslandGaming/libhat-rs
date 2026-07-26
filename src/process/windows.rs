@@ -112,14 +112,14 @@ pub fn get_section_data<'a>(module: &'a Module, name: &str) -> Option<&'a [u8]> 
 
         for i in 0..num_sections {
             let section = &*first_section.add(i as usize);
-            let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr(), 8);
+            let sec_name = std::slice::from_raw_parts(section.Name.as_ptr(), 8);
             let sec_name_trimmed = std::str::from_utf8(sec_name)
                 .unwrap_or("")
                 .trim_end_matches('\0');
             if sec_name_trimmed == name {
                 let data = slice::from_raw_parts(
-                    (base + (*section).VirtualAddress as usize) as *const u8,
-                    (*section).Misc.VirtualSize as usize,
+                    (base + section.VirtualAddress as usize) as *const u8,
+                    section.Misc.VirtualSize as usize,
                 );
                 return Some(data);
             }
@@ -140,18 +140,18 @@ pub fn for_each_section(module: &Module, callback: &mut dyn FnMut(&str, &[u8], P
 
         for i in 0..num_sections {
             let section = &*first_section.add(i as usize);
-            let sec_name = std::slice::from_raw_parts((*section).Name.as_ptr(), 8);
+            let sec_name = std::slice::from_raw_parts(section.Name.as_ptr(), 8);
             let sec_name_trimmed = std::str::from_utf8(sec_name)
                 .unwrap_or("")
                 .trim_end_matches('\0');
 
             let data = slice::from_raw_parts(
-                (base + (*section).VirtualAddress as usize) as *const u8,
-                (*section).Misc.VirtualSize as usize,
+                (base + section.VirtualAddress as usize) as *const u8,
+                section.Misc.VirtualSize as usize,
             );
 
             let mut prot = Protection::empty();
-            let charact = (*section).Characteristics;
+            let charact = section.Characteristics;
             if charact & IMAGE_SCN_MEM_READ != 0 { prot |= Protection::READ; }
             if charact & IMAGE_SCN_MEM_WRITE != 0 { prot |= Protection::WRITE; }
             if charact & IMAGE_SCN_MEM_EXECUTE != 0 { prot |= Protection::EXECUTE; }
@@ -176,12 +176,12 @@ pub fn for_each_segment(module: &Module, callback: &mut dyn FnMut(&[u8], Protect
         for i in 0..num_sections {
             let section = &*first_section.add(i as usize);
             let data = slice::from_raw_parts(
-                (base + (*section).VirtualAddress as usize) as *const u8,
-                (*section).Misc.VirtualSize as usize,
+                (base + section.VirtualAddress as usize) as *const u8,
+                section.Misc.VirtualSize as usize,
             );
 
             let mut prot = Protection::empty();
-            let charact = (*section).Characteristics;
+            let charact = section.Characteristics;
             if charact & IMAGE_SCN_MEM_READ != 0 { prot |= Protection::READ; }
             if charact & IMAGE_SCN_MEM_WRITE != 0 { prot |= Protection::WRITE; }
             if charact & IMAGE_SCN_MEM_EXECUTE != 0 { prot |= Protection::EXECUTE; }
